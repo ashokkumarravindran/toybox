@@ -12,12 +12,11 @@ export default function UploadChoicePage() {
       <ToyboxHeader darkMode={darkMode} onDarkModeChange={setDarkMode} />
 
       <main>
-        <section className="relative overflow-hidden bg-slate-950 text-white">
-          <div className="absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-slate-900 via-slate-950/70 to-transparent" />
+        <section className="bg-slate-950 text-white">
           <div className="mx-auto max-w-7xl px-6 sm:px-8 py-16 lg:py-24">
             <div className="max-w-3xl mx-auto text-center">
               <p className="text-sm uppercase tracking-[0.3em] font-semibold text-cyan-300">UPLOAD</p>
-              <h1 className="mt-6 text-5xl sm:text-6xl font-semibold tracking-[-0.04em] leading-[1.1]">
+              <h1 className="mt-6 text-5xl sm:text-6xl font-semibold tracking-[-0.04em] leading-[1.1] text-white">
                 Create a new showcase
               </h1>
               <p className="mt-6 text-xl leading-8 text-slate-300">

@@ -94,7 +94,7 @@ export default function IndexComposerShowcase() {
                     href="/assets/index-composer"
                     className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:border-white/25 hover:bg-white/10"
                   >
-                    Explore Assets
+                    Download Assets
                   </Link>
                 </div>
               </div>
@@ -108,22 +108,6 @@ export default function IndexComposerShowcase() {
                     className="h-full w-full min-h-[420px] object-cover"
                     loading="eager"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/10 to-transparent" />
-                </div>
-                <div className="absolute right-6 top-6 flex items-center rounded-full border border-white/10 bg-white/10 p-2 backdrop-blur-sm">
-                  <button className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-100 transition hover:bg-white/10">
-                    <Bookmark size={18} />
-                  </button>
-                  <button className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-100 transition hover:bg-white/10">
-                    <Share2 size={18} />
-                  </button>
-                  <button className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-100 transition hover:bg-white/10">
-                    <Download size={18} />
-                  </button>
-                  <div className="ml-3 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-sm text-slate-100">
-                    <Star size={16} className="text-amber-300" />
-                    4.9
-                  </div>
                 </div>
               </div>
             </div>
@@ -495,7 +479,7 @@ export default function IndexComposerShowcase() {
               href="/assets/index-composer"
               className="mt-10 inline-flex items-center gap-3 rounded-full bg-cyan-400 px-8 py-4 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
             >
-              Explore Assets
+              Download Assets
               <ArrowRight size={18} />
             </Link>
           </div>

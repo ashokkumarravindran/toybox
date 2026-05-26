@@ -17,7 +17,7 @@ export default function ToyboxHeader({ darkMode = true, onDarkModeChange, backLi
   const [search, setSearch] = useState('');
 
   return (
-    <header className={`sticky top-0 z-40 border-b ${darkMode ? 'border-white/10 bg-[#05060f]/95' : 'border-slate-200 bg-white/95'} backdrop-blur`}>
+    <header className={`sticky top-0 z-40 border-b ${darkMode ? 'border-white/10 bg-[#05060f]/95 text-white' : 'border-slate-200 bg-white/95 text-slate-950'} backdrop-blur`}>
       <div className="mx-auto max-w-7xl px-6 py-4 sm:px-8">
         <div className="flex items-center justify-between gap-6">
           {/* Logo or Back Link */}
@@ -51,7 +51,7 @@ export default function ToyboxHeader({ darkMode = true, onDarkModeChange, backLi
           </div>
 
           {/* Right Actions */}
-          <div className="flex items-center gap-3">
+          <div className={`flex items-center gap-3 ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
             <Link
               href="/upload"
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${darkMode ? 'bg-cyan-400/20 text-cyan-300 hover:bg-cyan-400/30' : 'bg-cyan-500/10 text-cyan-600 hover:bg-cyan-500/20'}`}
@@ -60,14 +60,14 @@ export default function ToyboxHeader({ darkMode = true, onDarkModeChange, backLi
             </Link>
             <button
               onClick={() => onDarkModeChange?.(!darkMode)}
-              className={`p-2 rounded-lg transition ${darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
+              className={`p-2 rounded-lg transition ${darkMode ? 'text-slate-200 hover:bg-white/10' : 'text-slate-700 hover:bg-slate-100'}`}
             >
               {darkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <button className={`p-2 rounded-lg transition ${darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}>
+            <button className={`p-2 rounded-lg transition ${darkMode ? 'text-slate-200 hover:bg-white/10' : 'text-slate-700 hover:bg-slate-100'}`}>
               <Bell size={18} />
             </button>
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-lg ${darkMode ? 'bg-slate-900/50' : 'bg-slate-100'}`}>
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-lg ${darkMode ? 'bg-slate-900/50 text-slate-200' : 'bg-slate-100 text-slate-700'}`}>
               <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600" />
               <span className="text-sm font-medium hidden sm:inline">A</span>
             </div>
