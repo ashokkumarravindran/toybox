@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import ToyboxHeader from '@/app/components/ToyboxHeader';
 
 type SolutionHighlight = {
@@ -106,6 +107,8 @@ export default function UploadManual() {
     projectArtifacts: [],
   });
 
+  const router = useRouter();
+
   const toggleTag = (tag: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -159,13 +162,130 @@ export default function UploadManual() {
   };
 
   const handleCreateShowcase = () => {
-    console.log('Creating showcase with data:', formData);
-    // TODO: Navigate to preview or submit to backend
+    // placeholder — implementation below
+    void createShowcase();
   };
 
   const handleSaveDraft = () => {
     console.log('Saving draft:', formData);
     // TODO: Save to localStorage or backend
+  };
+
+  const [toast, setToast] = useState<string | null>(null);
+
+  const detectArtifactType = (name: string): ProjectArtifact['type'] => {
+    const ext = name.split('.').pop()?.toLowerCase() || '';
+    if (ext === 'pdf') return 'pdf';
+    if (ext === 'ppt' || ext === 'pptx') return 'ppt';
+    if (ext === 'zip') return 'zip';
+    return 'zip';
+  };
+
+  const addProjectArtifacts = (files: FileList | null) => {
+    if (!files) return;
+    const entries: ProjectArtifact[] = Array.from(files).map((f) => ({
+      type: detectArtifactType(f.name),
+      name: f.name,
+      value: f,
+    }));
+    setFormData((prev) => ({ ...prev, projectArtifacts: [...prev.projectArtifacts, ...entries] }));
+  };
+
+  const fileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const createShowcase = async () => {
+    // Validate required fields
+    const required = [
+      { key: 'projectName', label: 'Project name' },
+      { key: 'domain', label: 'Domain' },
+      { key: 'engagementType', label: 'Engagement type' },
+      { key: 'overview', label: 'Overview' },
+      { key: 'challenge', label: 'Challenge' },
+      { key: 'solutionApproach', label: 'Solution approach' },
+    ] as const;
+
+    for (const r of required) {
+      // @ts-ignore
+      if (!formData[r.key] || (typeof formData[r.key] === 'string' && formData[r.key].trim() === '')) {
+        alert(`${r.label} is required`);
+        return;
+      }
+    }
+
+    
+    const slugBase = formData.projectName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    // Convert images to data URLs
+    const solutionHighlights = await Promise.all(
+      formData.solutionHighlights.map(async (h) => ({
+        type: h.type,
+        summary: h.summary,
+        images: await Promise.all(h.images.map((file) => fileToDataUrl(file))),
+      }))
+    );
+
+    // Choose hero image: first uploaded highlight image if available
+    let heroImage: string | null = null;
+    for (const sh of solutionHighlights) {
+      if (sh.images && sh.images.length > 0) {
+        heroImage = sh.images[0];
+        break;
+      }
+    }
+
+    const processedArtifacts = await Promise.all(
+      formData.projectArtifacts.map(async (a) => {
+        if (typeof a.value === 'string') return { ...a };
+        const file = a.value as File;
+        const data = await fileToDataUrl(file);
+        return { type: a.type, name: a.name, value: data } as ProjectArtifact;
+      })
+    );
+
+    const newShowcase = {
+      projectName: formData.projectName,
+      domain: formData.domain,
+      engagementType: formData.engagementType,
+      figmaLink: formData.figmaLink,
+      tags: formData.tags,
+      overview: formData.overview,
+      challenge: formData.challenge,
+      solutionApproach: formData.solutionApproach,
+      outcome: formData.outcome,
+      selectedHighlights: formData.selectedHighlights,
+      solutionHighlights,
+      projectArtifacts: processedArtifacts,
+      heroImage,
+      createdAt: Date.now(),
+    } as const;
+
+    const STORAGE_KEY = 'toybox_generated_showcases';
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const existing = raw ? JSON.parse(raw) : [];
+
+    let slug = slugBase;
+    // ensure uniqueness
+    if (existing.some((s: any) => s.slug === slug)) {
+      slug = `${slug}-${Date.now()}`;
+    }
+
+    const stored = [{ ...newShowcase, slug }, ...existing];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+
+    setToast('Showcase created — redirecting...');
+    await new Promise((res) => setTimeout(res, 700));
+    router.push(`/showcase/${slug}`);
   };
 
   return (
@@ -405,12 +525,26 @@ export default function UploadManual() {
 
                 <div className="space-y-4">
                   <p className="text-xs font-medium text-slate-600 uppercase tracking-wide">Accepted: PDF, PPT, PPTX, ZIP, Miro links, Figma links, Readout materials</p>
-                  <div className="rounded-[1rem] border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-8 text-center cursor-pointer hover:border-slate-400 transition">
-                    <p className="text-sm font-medium text-slate-900">
-                      Click or drag to upload project files
-                    </p>
-                    <p className="mt-2 text-xs text-slate-600">Optional</p>
-                  </div>
+                    <div className="rounded-[1rem] border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-8 text-center cursor-pointer hover:border-slate-400 transition relative">
+                      <input
+                        type="file"
+                        multiple
+                        onChange={(e) => addProjectArtifacts(e.target.files)}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">Click or drag to upload project files</p>
+                        <p className="mt-2 text-xs text-slate-600">Optional</p>
+                      </div>
+                    </div>
+
+                    {formData.projectArtifacts.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        {formData.projectArtifacts.map((a, idx) => (
+                          <div key={idx} className="text-sm text-slate-700">{a.name}</div>
+                        ))}
+                      </div>
+                    )}
                 </div>
               </div>
 

@@ -275,6 +275,7 @@ export default function Home() {
   const [search, setSearch] = useState('');
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [generatedCards, setGeneratedCards] = useState<any[]>([]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -284,6 +285,26 @@ export default function Home() {
     }, 5000); // 5 seconds autoplay
     return () => clearInterval(interval);
   }, [isPaused]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('toybox_generated_showcases');
+      if (!raw) return;
+      const arr = JSON.parse(raw) as any[];
+      const mapped = arr.map((s) => ({
+        id: s.slug,
+        title: s.projectName,
+        type: s.engagementType,
+        creator: s.domain,
+        rating: 4.7,
+        heroImage: s.heroImage || null,
+        __generated: true,
+      }));
+      setGeneratedCards(mapped);
+    } catch (e) {
+      // ignore
+    }
+  }, []);
 
   return (
     <div className={darkMode ? 'bg-[#05060f] text-slate-100' : 'bg-white text-slate-950'}>
@@ -453,53 +474,62 @@ export default function Home() {
           </div>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {repositoryCards.map((card) => (
-            <Link
-              key={card.id}
-              href={card.id === '1' ? '/showcase/index-composer' : '/'}
-              className={`group rounded-xl overflow-hidden border transition hover:shadow-2xl hover:-translate-y-1 ${darkMode ? 'border-white/10 hover:border-white/30 hover:bg-slate-950/50' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}
-            >
-              {/* Thumbnail */}
-              <div className="relative h-48 overflow-hidden">
-                <AssetImage
-                  folder={card.assetFolder}
-                  alt={card.title}
-                  className="absolute inset-0 h-full w-full object-cover"
-                  fallback={
-                    <div className="absolute inset-0" style={{ background: card.gradient }}>
-                      <div className="absolute inset-0" style={{ background: card.pattern }} />
+          {[...generatedCards, ...repositoryCards].map((card) => {
+            const isGenerated = (card as any).__generated === true;
+            const href = isGenerated ? `/showcase/${card.id}` : (card.title === 'Index Composer' ? '/showcase/index-composer' : '/');
+            return (
+              <Link
+                key={card.id}
+                href={href}
+                className={`group rounded-xl overflow-hidden border transition hover:shadow-2xl hover:-translate-y-1 ${darkMode ? 'border-white/10 hover:border-white/30 hover:bg-slate-950/50' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}
+              >
+                {/* Thumbnail */}
+                <div className="relative h-48 overflow-hidden">
+                  {isGenerated && card.heroImage ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={card.heroImage} alt={card.title} className="absolute inset-0 h-full w-full object-cover" />
+                  ) : (
+                    <AssetImage
+                      folder={(card as any).assetFolder}
+                      alt={card.title}
+                      className="absolute inset-0 h-full w-full object-cover"
+                      fallback={
+                        <div className="absolute inset-0" style={{ background: (card as any).gradient }}>
+                          <div className="absolute inset-0" style={{ background: (card as any).pattern }} />
+                        </div>
+                      }
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-slate-950/20" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-sm font-medium text-white/90">{card.title}</div>
+                  </div>
+                </div>
+
+                {/* Card Content */}
+                <div className={`p-5 ${darkMode ? 'bg-slate-950/50 border-t border-white/10' : 'bg-slate-50 border-t border-slate-200'}`}>
+                  <h3 className="font-semibold text-sm">{card.title}</h3>
+                  <p className={`text-xs mt-2 ${darkMode ? 'text-slate-500' : 'text-slate-600'}`}>{card.type}</p>
+
+                  <div className="mt-4 flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600" />
+                      <span className={darkMode ? 'text-slate-400' : 'text-slate-600'}>{card.creator}</span>
                     </div>
-                  }
-                />
-                <div className="absolute inset-0 bg-slate-950/20" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-sm font-medium text-white/90">{card.title}</div>
-                </div>
-              </div>
-
-              {/* Card Content */}
-              <div className={`p-5 ${darkMode ? 'bg-slate-950/50 border-t border-white/10' : 'bg-slate-50 border-t border-slate-200'}`}>
-                <h3 className="font-semibold text-sm">{card.title}</h3>
-                <p className={`text-xs mt-2 ${darkMode ? 'text-slate-500' : 'text-slate-600'}`}>{card.type}</p>
-
-                <div className="mt-4 flex items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600" />
-                    <span className={darkMode ? 'text-slate-400' : 'text-slate-600'}>{card.creator}</span>
+                    <div className={`flex items-center gap-1 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                      <span>★</span>
+                      <span>{card.rating}</span>
+                    </div>
                   </div>
-                  <div className={`flex items-center gap-1 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                    <span>★</span>
-                    <span>{card.rating}</span>
-                  </div>
-                </div>
 
-                <button className={`mt-4 w-full py-2 rounded-lg text-xs font-medium transition ${darkMode ? 'border border-white/10 hover:bg-white/5' : 'border border-slate-300 hover:bg-slate-100'}`}>
-                  <Bookmark size={14} className="inline mr-2" />
-                  Save
-                </button>
-              </div>
-            </Link>
-          ))}
+                  <button className={`mt-4 w-full py-2 rounded-lg text-xs font-medium transition ${darkMode ? 'border border-white/10 hover:bg-white/5' : 'border border-slate-300 hover:bg-slate-100'}`}>
+                    <Bookmark size={14} className="inline mr-2" />
+                    Save
+                  </button>
+                </div>
+              </Link>
+            );
+          })}
         </div>
         <div className="mt-10 flex justify-end">
           <button className={`inline-flex items-center justify-center rounded-full px-5 py-2 text-sm font-semibold transition ${darkMode ? 'bg-white text-slate-950 hover:bg-slate-100' : 'bg-slate-950 text-white hover:bg-slate-900'}`}>
