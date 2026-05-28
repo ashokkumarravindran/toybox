@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Bookmark, Share2, Download, Star, ArrowRight } from 'lucide-react';
+import { getFileUrl, deleteFile } from '@/lib/idb';
 
 type SolutionHighlight = {
   type: string;
@@ -41,15 +42,45 @@ export default function GeneratedShowcasePage() {
       return;
     }
 
-    const raw = localStorage.getItem('toybox_generated_showcases');
-    if (!raw) return;
-    try {
-      const arr = JSON.parse(raw) as GeneratedShowcase[];
-      const found = arr.find((s) => s.slug === slug);
-      if (found) setShowcase(found);
-    } catch (e) {
-      // ignore
-    }
+    (async () => {
+      const raw = localStorage.getItem('toybox_generated_showcases');
+      if (!raw) return;
+      try {
+        const arr = JSON.parse(raw) as GeneratedShowcase[];
+        const found = arr.find((s) => s.slug === slug);
+        if (found) {
+          // resolve file ids to object URLs where necessary
+          const resolved = { ...found } as any;
+          if (found.heroImage && typeof found.heroImage === 'string' && !found.heroImage.startsWith('data:') && !found.heroImage.startsWith('http')) {
+            const url = await getFileUrl(found.heroImage);
+            resolved.heroImage = url || null;
+          }
+
+          resolved.solutionHighlights = await Promise.all(found.solutionHighlights.map(async (h) => {
+            const imgs = await Promise.all(h.images.map(async (img: string) => {
+              if (typeof img !== 'string') return img;
+              if (img.startsWith('data:') || img.startsWith('http')) return img;
+              const url = await getFileUrl(img);
+              return url || img;
+            }));
+            return { ...h, images: imgs };
+          }));
+
+          resolved.projectArtifacts = await Promise.all((found.projectArtifacts || []).map(async (a: any) => {
+            const value = a.value as string;
+            if (typeof value === 'string' && !value.startsWith('data:') && !value.startsWith('http')) {
+              const url = await getFileUrl(value);
+              return { ...a, value: url || value };
+            }
+            return a;
+          }));
+
+          setShowcase(resolved);
+        }
+      } catch (e) {
+        // ignore
+      }
+    })();
   }, [slug, router]);
 
   if (!slug) return null;
@@ -85,6 +116,39 @@ export default function GeneratedShowcasePage() {
               <button className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-700 transition hover:bg-slate-100">
                 <Share2 size={18} />
               </button>
++              <button onClick={async () => {
++                  if (!confirm('Delete this generated showcase? This cannot be undone.')) return;
++                  try {
++                    const raw = localStorage.getItem('toybox_generated_showcases');
++                    if (raw) {
++                      const arr = JSON.parse(raw) as any[];
++                      const found = arr.find((s) => s.slug === slug);
++                      if (found) {
++                        // delete files
++                        if (found.heroImage) await deleteFile(found.heroImage).catch(() => {});
++                        if (found.heroThumb) await deleteFile(found.heroThumb).catch(() => {});
++                        for (const h of (found.solutionHighlights || [])) {
++                          for (const imgId of (h.images || [])) {
++                            if (typeof imgId === 'string') await deleteFile(imgId).catch(() => {});
++                          }
++                        }
++                        for (const a of (found.projectArtifacts || [])) {
++                          const v = a.value;
++                          if (typeof v === 'string' && !v.startsWith('http') && !v.startsWith('data:')) {
++                            await deleteFile(v).catch(() => {});
++                          }
++                        }
++                        const remaining = arr.filter((s) => s.slug !== slug);
++                        localStorage.setItem('toybox_generated_showcases', JSON.stringify(remaining));
++                      }
++                    }
++                  } catch (e) {
++                    // ignore
++                  }
++                  router.push('/');
++                }} className="inline-flex h-11 items-center justify-center rounded-full border border-red-300 bg-white/95 text-red-600 transition hover:bg-red-50">
++                Delete
++              </button>
             </div>
           </div>
         </div>

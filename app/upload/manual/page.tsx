@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ToyboxHeader from '@/app/components/ToyboxHeader';
+import { saveFile } from '@/lib/idb';
 
 type SolutionHighlight = {
   type: string;
@@ -200,6 +201,34 @@ export default function UploadManual() {
     });
   };
 
+  const createImageThumbnail = (file: File, maxWidth = 800): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const ratio = img.width / img.height;
+          const width = Math.min(maxWidth, img.width);
+          const height = Math.round(width / ratio);
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return reject(new Error('Canvas not supported'));
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob((blob) => {
+            if (!blob) return reject(new Error('Failed to create thumbnail'));
+            resolve(blob);
+          }, 'image/jpeg', 0.8);
+        };
+        img.onerror = reject;
+        img.src = String(reader.result);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const createShowcase = async () => {
     // Validate required fields
     const required = [
@@ -226,17 +255,30 @@ export default function UploadManual() {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
 
-    // Convert images to data URLs
+    // Save uploaded images to IndexedDB and store ids. Generate a thumbnail for the hero image.
+    let heroImage: string | null = null;
+    let heroThumb: string | null = null;
     const solutionHighlights = await Promise.all(
       formData.solutionHighlights.map(async (h) => ({
         type: h.type,
         summary: h.summary,
-        images: await Promise.all(h.images.map((file) => fileToDataUrl(file))),
+        images: await Promise.all(h.images.map(async (file) => {
+          const id = await saveFile(file, file.name);
+          // generate hero thumbnail from the first available image
+          if (!heroThumb) {
+            try {
+              const thumbBlob = await createImageThumbnail(file, 800);
+              heroThumb = await saveFile(thumbBlob, `thumb-${file.name}`);
+            } catch (e) {
+              // ignore thumbnail errors
+            }
+          }
+          return id;
+        })),
       }))
     );
 
-    // Choose hero image: first uploaded highlight image if available
-    let heroImage: string | null = null;
+    // Choose hero image id: first uploaded highlight image if available
     for (const sh of solutionHighlights) {
       if (sh.images && sh.images.length > 0) {
         heroImage = sh.images[0];
@@ -248,8 +290,8 @@ export default function UploadManual() {
       formData.projectArtifacts.map(async (a) => {
         if (typeof a.value === 'string') return { ...a };
         const file = a.value as File;
-        const data = await fileToDataUrl(file);
-        return { type: a.type, name: a.name, value: data } as ProjectArtifact;
+        const id = await saveFile(file, a.name);
+        return { type: a.type, name: a.name, value: id } as ProjectArtifact;
       })
     );
 
@@ -267,6 +309,7 @@ export default function UploadManual() {
       solutionHighlights,
       projectArtifacts: processedArtifacts,
       heroImage,
+      heroThumb,
       createdAt: Date.now(),
     } as const;
 

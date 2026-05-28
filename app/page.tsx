@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState, useEffect, type ReactNode } from 'react';
 import { Search, Bell, Sun, Moon, Bookmark, Pause } from 'lucide-react';
+import { getFileUrl } from '@/lib/idb';
 
 
 type RepositoryCard = {
@@ -287,23 +288,32 @@ export default function Home() {
   }, [isPaused]);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('toybox_generated_showcases');
-      if (!raw) return;
-      const arr = JSON.parse(raw) as any[];
-      const mapped = arr.map((s) => ({
-        id: s.slug,
-        title: s.projectName,
-        type: s.engagementType,
-        creator: s.domain,
-        rating: 4.7,
-        heroImage: s.heroImage || null,
-        __generated: true,
-      }));
-      setGeneratedCards(mapped);
-    } catch (e) {
-      // ignore
-    }
+    (async () => {
+      try {
+        const raw = localStorage.getItem('toybox_generated_showcases');
+        if (!raw) return;
+        const arr = JSON.parse(raw) as any[];
+        const mapped = await Promise.all(arr.map(async (s) => {
+          let hero = s.heroThumb || s.heroImage || null;
+          if (hero && typeof hero === 'string' && !hero.startsWith('data:') && !hero.startsWith('http')) {
+            const url = await getFileUrl(hero);
+            hero = url || null;
+          }
+          return ({
+            id: s.slug,
+            title: s.projectName,
+            type: s.engagementType,
+            creator: s.domain,
+            rating: 4.7,
+            heroImage: hero,
+            __generated: true,
+          });
+        }));
+        setGeneratedCards(mapped);
+      } catch (e) {
+        // ignore
+      }
+    })();
   }, []);
 
   return (
