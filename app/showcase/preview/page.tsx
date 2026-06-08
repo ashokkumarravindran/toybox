@@ -360,11 +360,11 @@ function ShowcasePreviewContent() {
             </div>
 
             {heroImage && (
-              <div className="overflow-hidden rounded-xl border border-white/10 bg-white/5 p-2">
+              <div className="overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6">
                 <img
                   src={heroImage}
                   alt="Hero artifact"
-                  className="h-[360px] w-full rounded-lg object-cover"
+                  className="h-[360px] w-full rounded-lg object-contain"
                 />
               </div>
             )}
@@ -389,11 +389,11 @@ function ShowcasePreviewContent() {
               </div>
 
               {challengeImage && (
-                <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-2">
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-br from-slate-100 via-white to-slate-200 p-6">
                   <img
                     src={challengeImage}
                     alt="Challenge artifact"
-                    className="h-[340px] w-full rounded-lg object-cover"
+                    className="h-[340px] w-full rounded-lg object-contain"
                   />
                 </div>
               )}
@@ -447,7 +447,7 @@ function ShowcasePreviewContent() {
                         <img
                           src={personaImage}
                           alt={persona.name || 'Persona'}
-                          className="mb-5 h-56 w-full rounded-lg object-cover"
+                          className="mb-5 h-56 w-full rounded-lg bg-gradient-to-br from-slate-100 via-white to-slate-200 object-contain p-3"
                         />
                       )}
 
@@ -502,7 +502,7 @@ function ShowcasePreviewContent() {
                         <img
                           src={img}
                           alt={item.heading || 'Solution artifact'}
-                          className="h-[320px] w-full rounded-lg object-cover"
+                          className="h-[320px] w-full rounded-lg bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 object-contain p-4"
                         />
                       )}
 
