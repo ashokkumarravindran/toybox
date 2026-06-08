@@ -24,6 +24,13 @@ type PreparedFile = {
 const acceptedFileTypes = '.pdf,.png,.jpg,.jpeg,.webp';
 const DEMO_PASSWORD = 'Claude45';
 
+const MAX_IMAGE_FILES = 10;
+const MAX_PDF_FILES = 1;
+const MAX_IMAGE_FILE_MB = 8;
+const MAX_PDF_FILE_MB = 10;
+const MAX_API_PAYLOAD_MB = 3.5;
+const MB = 1024 * 1024;
+
 const domainOptions = [
   'Banking and Financial Services',
   'Healthcare',
@@ -111,6 +118,42 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
+function getPayloadSizeMb(payload: unknown) {
+  return new Blob([JSON.stringify(payload)]).size / MB;
+}
+
+function compressImageDataUrl(
+  dataUrl: string,
+  maxWidth: number,
+  quality: number
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+
+    img.onload = () => {
+      const scale = Math.min(1, maxWidth / img.width);
+      const width = Math.round(img.width * scale);
+      const height = Math.round(img.height * scale);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Could not prepare image for AI.'));
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+
+    img.onerror = () => reject(new Error('Image optimization failed.'));
+    img.src = dataUrl;
+  });
+}
+
 export default function UploadAI() {
   const router = useRouter();
 
@@ -164,16 +207,63 @@ export default function UploadAI() {
     return () => window.clearInterval(interval);
   }, [isProcessing]);
 
-  const handleFiles = (incomingFiles: FileList | null) => {
-    if (!incomingFiles || incomingFiles.length === 0) return;
+const handleFiles = (incomingFiles: FileList | null) => {
+  if (!incomingFiles || incomingFiles.length === 0) return;
 
-    const allowedFiles = Array.from(incomingFiles).filter((file) => {
-      const category = getFileCategory(file);
-      return category === 'image' || category === 'pdf';
-    });
+  setErrorMessage('');
 
-    setFiles((current) => [...current, ...allowedFiles]);
-  };
+  const incoming = Array.from(incomingFiles);
+  const currentImages = files.filter((file) => getFileCategory(file) === 'image').length;
+  const currentPdfs = files.filter((file) => getFileCategory(file) === 'pdf').length;
+
+  const accepted: File[] = [];
+
+  for (const file of incoming) {
+    const category = getFileCategory(file);
+    const fileSizeMb = file.size / MB;
+
+    if (category !== 'image' && category !== 'pdf') {
+      setErrorMessage('Toybox supports PNG, JPG, WEBP, and PDF files for this MVP.');
+      continue;
+    }
+
+    if (category === 'image') {
+      const nextImageCount =
+        currentImages + accepted.filter((item) => getFileCategory(item) === 'image').length + 1;
+
+      if (nextImageCount > MAX_IMAGE_FILES) {
+        setErrorMessage(`You can upload up to ${MAX_IMAGE_FILES} images for this MVP.`);
+        continue;
+      }
+
+      if (fileSizeMb > MAX_IMAGE_FILE_MB) {
+        setErrorMessage(`Each image must be ${MAX_IMAGE_FILE_MB} MB or smaller.`);
+        continue;
+      }
+    }
+
+    if (category === 'pdf') {
+      const nextPdfCount =
+        currentPdfs + accepted.filter((item) => getFileCategory(item) === 'pdf').length + 1;
+
+      if (nextPdfCount > MAX_PDF_FILES) {
+        setErrorMessage('You can upload 1 PDF for this MVP.');
+        continue;
+      }
+
+      if (fileSizeMb > MAX_PDF_FILE_MB) {
+        setErrorMessage(`PDF must be ${MAX_PDF_FILE_MB} MB or smaller.`);
+        continue;
+      }
+    }
+
+    accepted.push(file);
+  }
+
+  if (accepted.length > 0) {
+    setFiles((current) => [...current, ...accepted]);
+  }
+};
 
   const removeFile = (index: number) => {
     setFiles((current) => current.filter((_, idx) => idx !== index));
@@ -204,18 +294,59 @@ export default function UploadAI() {
     setOtherUrls((current) => current.filter((_, idx) => idx !== index));
   };
 
-  const prepareFilesForClaude = async (): Promise<PreparedFile[]> => {
-    const prepared = await Promise.all(
-      files.map(async (file) => ({
-        name: file.name,
-        type: file.type || (getFileCategory(file) === 'pdf' ? 'application/pdf' : 'image/png'),
-        category: getFileCategory(file),
-        dataUrl: await fileToDataUrl(file),
-      }))
+ const prepareFilesForClaude = async (): Promise<{
+  originalFiles: PreparedFile[];
+  analysisFiles: PreparedFile[];
+}> => {
+  const originalFiles = await Promise.all(
+    files.map(async (file) => ({
+      name: file.name,
+      type: file.type || (getFileCategory(file) === 'pdf' ? 'application/pdf' : 'image/png'),
+      category: getFileCategory(file),
+      dataUrl: await fileToDataUrl(file),
+    }))
+  );
+
+  const compressionPasses = [
+    { maxWidth: 1400, quality: 0.78 },
+    { maxWidth: 1200, quality: 0.72 },
+    { maxWidth: 1000, quality: 0.65 },
+  ];
+
+  for (const pass of compressionPasses) {
+    const analysisFiles = await Promise.all(
+      originalFiles.map(async (file) => {
+        if (file.category !== 'image') return file;
+
+        return {
+          ...file,
+          type: 'image/jpeg',
+          dataUrl: await compressImageDataUrl(file.dataUrl, pass.maxWidth, pass.quality),
+        };
+      })
     );
 
-    return prepared;
-  };
+    const apiPayload = {
+      projectName: metadata.projectName,
+      domain: metadata.domain,
+      engagementType: metadata.engagementType,
+      projectContext,
+      figmaLink,
+      otherUrls,
+      tags: metadata.tags,
+      images: analysisFiles.filter((file) => file.category === 'image'),
+      documents: analysisFiles.filter((file) => file.category === 'pdf'),
+    };
+
+    if (getPayloadSizeMb(apiPayload) <= MAX_API_PAYLOAD_MB) {
+      return { originalFiles, analysisFiles };
+    }
+  }
+
+  throw new Error(
+    'The selected files are still too large after optimization. Try removing one or two files, or upload smaller images.'
+  );
+};
 
   const handleGenerate = () => {
     setPasswordError('');
@@ -242,10 +373,10 @@ export default function UploadAI() {
     setErrorMessage('');
 
     try {
-      const preparedFiles = await prepareFilesForClaude();
+    const { originalFiles, analysisFiles } = await prepareFilesForClaude();
 
-      const images = preparedFiles.filter((file) => file.category === 'image');
-      const documents = preparedFiles.filter((file) => file.category === 'pdf');
+    const images = analysisFiles.filter((file) => file.category === 'image');
+    const documents = analysisFiles.filter((file) => file.category === 'pdf');
 
       const response = await fetch('/api/generate-showcase', {
         method: 'POST',
@@ -275,7 +406,7 @@ export default function UploadAI() {
 
       const previewPayload = {
         showcase: result.showcase,
-        uploadedAssets: preparedFiles.map((file) => ({
+        uploadedAssets: originalFiles.map((file) => ({
           name: file.name,
           type: file.type,
           category: file.category,
@@ -531,8 +662,8 @@ export default function UploadAI() {
                   </p>
 
                   <p className="mt-3 text-sm leading-6 text-slate-600">
-                    Choose assets that best represent your work. Images and PDFs are supported for
-                    this MVP. Support for additional formats such as PPT and Figma is coming soon.
+                    Choose assets that best represent your work. Upload up to 10 images or 1 PDF.
+                    Toybox keeps originals for download and sends optimized previews to AI.
                   </p>
 
                   <div
@@ -562,7 +693,7 @@ export default function UploadAI() {
                     />
 
                     <p className="text-xl font-semibold text-slate-900">Drop images or PDFs here</p>
-                    <p className="mt-3 text-sm text-slate-500">PNG, JPG, JPEG, WEBP, PDF</p>
+                    <p className="mt-3 text-sm text-slate-500">PNG, JPG, JPEG up to 8 MB each or PDF up to 10 MB.</p>
                   </div>
 
                   {files.length > 0 && (
@@ -596,16 +727,6 @@ export default function UploadAI() {
                               </div>
                             )}
 
-                            <div className="p-4">
-                              <p className="truncate text-sm font-semibold text-slate-900">
-                                {file.name}
-                              </p>
-                              <p className="mt-1 text-xs text-slate-500">
-                                {category === 'image'
-                                  ? 'Image will be analyzed'
-                                  : 'PDF will be sent as a document'}
-                              </p>
-                            </div>
                           </div>
                         );
                       })}
