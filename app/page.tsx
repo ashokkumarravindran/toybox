@@ -426,7 +426,7 @@ export default function Home() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {allCards.map((card) => {
             const isGenerated = card.__generated === true;
-            const href = isGenerated ? '/showcase/preview' : card.title === 'Index Composer' ? '/showcase/index-composer' : '/';
+            const href = isGenerated ? '/showcase/preview?mode=published' : card.title === 'Index Composer' ? '/showcase/index-composer' : '/';
 
             return (
               <Link

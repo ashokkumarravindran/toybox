@@ -307,7 +307,7 @@ export default function UploadAI() {
         })
       );
 
-      router.push('/showcase/preview');
+      router.push('/showcase/preview?mode=preview');
     } catch (error) {
       console.error('Showcase generation failed:', error);
       setErrorMessage('Showcase generation failed. Please check the console or API route.');

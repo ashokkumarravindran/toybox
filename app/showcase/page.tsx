@@ -52,19 +52,31 @@ export default function ShowcasePreviewPage() {
   const solutionImages = imageAssets.slice(2);
 
   const handlePublish = () => {
-    if (!payload) return;
+  if (!payload) return;
 
-    const published = JSON.parse(localStorage.getItem('toyboxPublishedShowcases') || '[]');
+  const showcase = payload.showcase || {};
+  const heroImage = imageAssets[0]?.dataUrl || null;
 
-    const newShowcase = {
-      id: Date.now(),
-      ...payload,
-      publishedAt: new Date().toISOString(),
-    };
+  const published = JSON.parse(localStorage.getItem('toyboxPublishedShowcases') || '[]');
 
-    localStorage.setItem('toyboxPublishedShowcases', JSON.stringify([newShowcase, ...published]));
-    router.push('/');
+  const publishedCard = {
+    id: Date.now(),
+    title: showcase.title || payload.metadata?.projectName || 'Generated Showcase',
+    subtitle: showcase.subtitle || showcase.heroStatement || 'AI-generated showcase',
+    domain: showcase.domain || payload.metadata?.domain || 'Design',
+    overview: showcase.overview || '',
+    heroImage,
+    publishedAt: new Date().toISOString(),
+    tags: showcase.suggestedTags || payload.metadata?.tags || [],
   };
+
+  localStorage.setItem(
+    'toyboxPublishedShowcases',
+    JSON.stringify([publishedCard, ...published].slice(0, 6))
+  );
+
+  router.push('/');
+};
 
   if (!payload) {
     return (

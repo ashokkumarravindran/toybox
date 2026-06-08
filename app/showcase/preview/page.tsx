@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { Bookmark, Download, Share2, Trash2, Star, Pencil } from 'lucide-react';
 import JSZip from 'jszip';
@@ -103,6 +103,7 @@ function safeFileName(name: string) {
 
 export default function ShowcasePreviewPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [payload, setPayload] = useState<PreviewPayload | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -118,11 +119,7 @@ export default function ShowcasePreviewPage() {
       if (stored) setPayload(JSON.parse(stored));
     }
 
-    const published = JSON.parse(
-      localStorage.getItem('toyboxPublishedShowcases') || '[]'
-    );
-
-    setIsPublished(published.length > 0);
+    setIsPublished(searchParams.get('mode') === 'published');
   }, []);
 
   const showcase = payload?.showcase || {};
@@ -578,6 +575,57 @@ export default function ShowcasePreviewPage() {
             </div>
           </div>
         </section>
+{isPublished && (
+  <section className="bg-white py-16">
+    <div className="mx-auto max-w-7xl px-6 sm:px-8">
+      <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-600">
+        Community Reflections
+      </p>
+
+      <h2 className="mt-4 text-4xl font-semibold tracking-[-0.04em]">
+        A thoughtful space for collaborative observations.
+      </h2>
+
+      <p className="mt-4 max-w-3xl text-lg leading-8 text-slate-600">
+        A space for teams, designers, strategists, and collaborators to share observations,
+        insights, and reflections around the transformation journey.
+      </p>
+
+      <div className="mt-10 grid gap-6 md:grid-cols-3">
+        {[
+          ['“Strong systems-thinking approach.”', 'Amina R., Design Operations Partner'],
+          ['“Loved the ecosystem mapping work.”', 'Marcus H., Service Strategy Lead'],
+          ['“Excellent governance-led experience strategy.”', 'Nina K., Enterprise UX Director'],
+        ].map(([quote, person]) => (
+          <div key={quote} className="rounded-[2rem] border border-slate-200 bg-white p-6">
+            <p className="text-lg leading-7 text-slate-800">{quote}</p>
+            <p className="mt-6 text-sm text-slate-500">
+              <span className="font-semibold text-slate-900">{person.split(',')[0]}</span>,
+              {person.split(',').slice(1).join(',')}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-10 rounded-[2rem] border border-slate-200 bg-white p-6">
+        <p className="text-sm font-semibold text-slate-700">Share a reflection</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_auto]">
+          <input
+            disabled
+            value="Strong systems-thinking approach."
+            className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500"
+          />
+          <button
+            disabled
+            className="rounded-[1rem] bg-slate-950 px-6 py-3 text-sm font-semibold text-white opacity-80"
+          >
+            Add reflection
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+)}
       </main>
     </div>
   );
