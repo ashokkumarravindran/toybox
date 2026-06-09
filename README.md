@@ -6,7 +6,7 @@ Most teams create enormous amounts of valuable work during projects — research
 Toybox exists to change that.
 Rather than functioning as a traditional asset repository, Toybox serves as a system of curated intelligence. It helps teams discover, understand, package, and reuse organizational knowledge to accelerate future work.
 
-✅ LINK TO WORKING SITE: https://toybox-ne02i4kq6-ashokkumarravindrans-projects.vercel.app/
+✅ LINK TO WORKING SITE: https://toybox-chi.vercel.app/
 
 ## Current MVP
 
