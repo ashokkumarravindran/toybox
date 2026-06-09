@@ -39,39 +39,49 @@ export default function ToyboxHeader({ darkMode = true, onDarkModeChange, backLi
             <Link href="/" className={`transition ${darkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-950'}`}>Design Shelf</Link>
           </nav>
 
-          {/* Search */}
-          <div className={`flex-1 max-w-sm hidden lg:flex items-center gap-3 px-4 py-2 rounded-lg border ${darkMode ? 'border-white/10 bg-slate-900/50' : 'border-slate-200 bg-slate-50'}`}>
-            <Search size={16} className={darkMode ? 'text-slate-500' : 'text-slate-400'} />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search assets..."
-              className={`flex-1 bg-transparent text-sm outline-none placeholder-opacity-50 ${darkMode ? 'placeholder-slate-500' : 'placeholder-slate-400'}`}
-            />
-          </div>
-
           {/* Right Actions */}
-          <div className={`flex items-center gap-3 ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
-            <Link
-              href="/upload"
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${darkMode ? 'bg-cyan-400/20 text-cyan-300 hover:bg-cyan-400/30' : 'bg-cyan-500/10 text-cyan-600 hover:bg-cyan-500/20'}`}
-            >
-              + Upload
-            </Link>
-            <button
-              onClick={() => onDarkModeChange?.(!darkMode)}
-              className={`p-2 rounded-lg transition ${darkMode ? 'text-slate-200 hover:bg-white/10' : 'text-slate-700 hover:bg-slate-100'}`}
-            >
-              {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-            <button className={`p-2 rounded-lg transition ${darkMode ? 'text-slate-200 hover:bg-white/10' : 'text-slate-700 hover:bg-slate-100'}`}>
-              <Bell size={18} />
-            </button>
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-lg ${darkMode ? 'bg-slate-900/50 text-slate-200' : 'bg-slate-100 text-slate-700'}`}>
-              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600" />
-              <span className="text-sm font-medium hidden sm:inline">A</span>
-            </div>
-          </div>
+<div className={`flex items-center gap-2 ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
+  <Link
+    href="/upload"
+    className={`h-10 rounded-full px-4 text-sm font-medium transition flex items-center ${
+      darkMode
+        ? 'bg-cyan-400/20 text-cyan-300 hover:bg-cyan-400/30'
+        : 'bg-cyan-500/10 text-cyan-600 hover:bg-cyan-500/20'
+    }`}
+  >
+    + Upload
+  </Link>
+
+  <button
+    className={`h-10 w-10 rounded-full transition flex items-center justify-center ${
+      darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'
+    }`}
+  >
+    <Search size={18} />
+  </button>
+
+  <button
+    onClick={() => onDarkModeChange?.(!darkMode)}
+    className={`h-10 w-10 rounded-full transition flex items-center justify-center ${
+      darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'
+    }`}
+  >
+    {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+  </button>
+
+  <button
+    className={`h-10 w-10 rounded-full transition flex items-center justify-center ${
+      darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'
+    }`}
+  >
+    <Bell size={18} />
+  </button>
+
+  <div className={`flex items-center gap-2 rounded-lg px-3 py-1 ${darkMode ? 'bg-slate-900/50' : 'bg-slate-100'}`}>
+    <div className="h-6 w-6 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600" />
+    <span className="hidden text-sm font-medium sm:inline">A</span>
+  </div>
+</div>
         </div>
       </div>
     </header>

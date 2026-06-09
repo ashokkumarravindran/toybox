@@ -600,10 +600,10 @@ export default function UploadManual() {
                   Save draft
                 </button>
                 <button
-                  onClick={handleCreateShowcase}
-                  className="px-8 py-4 rounded-full text-sm font-semibold transition bg-cyan-500 text-white hover:bg-cyan-600"
+                  disabled
+                  className="px-8 py-4 rounded-full text-sm font-semibold transition bg-slate-300 text-slate-500 cursor-not-allowed"
                 >
-                  Create showcase
+                  Create Showcase
                 </button>
               </div>
             </div>

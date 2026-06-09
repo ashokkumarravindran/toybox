@@ -38,7 +38,20 @@ type CarouselSlide = {
 };
 
 const repositoryCards: RepositoryCard[] = [
-  {
+  
+{
+  id: '2',
+  title: 'Index Composer',
+  type: 'Enterprise Platform',
+  creator: 'Financial Services',
+  rating: 4.7,
+  assetFolder: 'curated/indexComposer',
+  heroImage: '/assets/curated/indexComposer/preview.png',
+  gradient: 'linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%)',
+  pattern: 'radial-gradient(circle at 30% 40%, rgba(15,23,42,0.8), transparent), radial-gradient(circle at 70% 70%, rgba(217,70,239,0.1), transparent)',
+},
+
+{
     id: '1',
     title: 'Claims Processing',
     type: 'Workflow Transformation',
@@ -48,16 +61,7 @@ const repositoryCards: RepositoryCard[] = [
     gradient: 'linear-gradient(135deg, #0ea5e9 0%, #06b6d4 100%)',
     pattern: 'radial-gradient(circle at 20% 50%, rgba(15,23,42,0.8), transparent), radial-gradient(circle at 80% 80%, rgba(6,182,212,0.1), transparent)',
   },
-  {
-    id: '2',
-    title: 'Index Composer',
-    type: 'Enterprise Platform',
-    creator: 'Financial Services',
-    rating: 4.7,
-    assetFolder: 'curated/indexComposer',
-    gradient: 'linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%)',
-    pattern: 'radial-gradient(circle at 30% 40%, rgba(15,23,42,0.8), transparent), radial-gradient(circle at 70% 70%, rgba(217,70,239,0.1), transparent)',
-  },
+
   {
     id: '3',
     title: 'Client Dashboard',
@@ -161,12 +165,15 @@ function AssetImage({ folder, alt, className, style, fallback }: AssetImageProps
   }, [folder]);
 
   if (!folder || failed) {
-    return <>{fallback}</>;
-  }
+  return <>{fallback}</>;
+}
 
-  const src = `/assets/${folder}/${imageNames[index]}`;
+const src = `/assets/${folder}/${imageNames[index]}`;
 
-  return (
+return (
+  <>
+    {fallback}
+
     <img
       src={src}
       alt={alt}
@@ -180,7 +187,8 @@ function AssetImage({ folder, alt, className, style, fallback }: AssetImageProps
         }
       }}
     />
-  );
+  </>
+);
 }
 
 export default function Home() {
@@ -267,41 +275,48 @@ export default function Home() {
               <Link href="/" className={darkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-950'}>Collections</Link>
               <Link href="/" className={darkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-950'}>Design Shelf</Link>
             </nav>
+            <div className="flex items-center gap-2">
+<Link
+  href="/upload"
+  className={`h-10 rounded-full px-4 text-sm font-medium transition flex items-center ${
+    darkMode
+      ? 'bg-cyan-400/20 text-cyan-300 hover:bg-cyan-400/30'
+      : 'bg-cyan-500/10 text-cyan-600 hover:bg-cyan-500/20'
+  }`}
+>
+  + Upload
+</Link>
 
-            <div className={`hidden max-w-sm flex-1 items-center gap-3 rounded-lg border px-4 py-2 lg:flex ${darkMode ? 'border-white/10 bg-slate-900/50' : 'border-slate-200 bg-slate-50'}`}>
-              <Search size={16} className={darkMode ? 'text-slate-500' : 'text-slate-400'} />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search assets..."
-                className={`flex-1 bg-transparent text-sm outline-none ${darkMode ? 'placeholder-slate-500' : 'placeholder-slate-400'}`}
-              />
-            </div>
+<button
+  className={`h-10 w-10 rounded-full transition flex items-center justify-center ${
+    darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'
+  }`}
+>
+  <Search size={18} />
+</button>
 
-            <div className="flex items-center gap-3">
-              <Link
-                href="/upload"
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition ${darkMode ? 'bg-cyan-400/20 text-cyan-300 hover:bg-cyan-400/30' : 'bg-cyan-500/10 text-cyan-600 hover:bg-cyan-500/20'}`}
-              >
-                + Upload
-              </Link>
+  <button
+    onClick={() => setDarkMode(!darkMode)}
+    className={`h-10 w-10 rounded-full transition flex items-center justify-center ${
+      darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'
+    }`}
+  >
+    {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+  </button>
 
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className={`rounded-lg p-2 transition ${darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}
-              >
-                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
+  <button
+    className={`h-10 w-10 rounded-full transition flex items-center justify-center ${
+      darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'
+    }`}
+  >
+    <Bell size={18} />
+  </button>
 
-              <button className={`rounded-lg p-2 transition ${darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-100'}`}>
-                <Bell size={18} />
-              </button>
-
-              <div className={`flex items-center gap-2 rounded-lg px-3 py-1 ${darkMode ? 'bg-slate-900/50' : 'bg-slate-100'}`}>
-                <div className="h-6 w-6 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600" />
-                <span className="hidden text-sm font-medium sm:inline">A</span>
-              </div>
-            </div>
+  <div className={`flex items-center gap-2 rounded-lg px-3 py-1 ${darkMode ? 'bg-slate-900/50' : 'bg-slate-100'}`}>
+    <div className="h-6 w-6 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600" />
+    <span className="hidden text-sm font-medium sm:inline">A</span>
+  </div>
+</div>
           </div>
         </div>
       </header>
@@ -327,16 +342,15 @@ export default function Home() {
               className={`absolute inset-0 transition-opacity duration-1000 ${index === currentSlide ? 'opacity-100' : 'opacity-0'}`}
             >
               <div className="relative h-full w-full overflow-hidden">
-                <AssetImage
-                  folder={slide.assetFolder}
-                  alt={slide.title}
-                  className="absolute inset-0 h-full w-full object-cover"
-                  fallback={
-                    <div className="absolute inset-0" style={{ background: slide.gradient }}>
-                      <div className="absolute inset-0" style={{ background: slide.pattern }} />
-                    </div>
-                  }
-                />
+             <div
+  className="absolute inset-0"
+  style={{ background: slide.gradient }}
+>
+  <div
+    className="absolute inset-0"
+    style={{ background: slide.pattern }}
+  />
+</div>
 
                 <div className="absolute inset-0 bg-slate-950/30" />
 
@@ -441,24 +455,17 @@ export default function Home() {
                     </div>
                   )}
 
-                  {isGenerated && card.heroImage ? (
-                    <img
-                      src={card.heroImage}
-                      alt={card.title}
-                      className="absolute inset-0 h-full w-full object-cover"
-                    />
-                  ) : (
-                    <AssetImage
-                      folder={card.assetFolder}
-                      alt={card.title}
-                      className="absolute inset-0 h-full w-full object-cover"
-                      fallback={
-                        <div className="absolute inset-0" style={{ background: card.gradient }}>
-                          <div className="absolute inset-0" style={{ background: card.pattern }} />
-                        </div>
-                      }
-                    />
-                  )}
+                 <div className="absolute inset-0" style={{ background: card.gradient }}>
+  <div className="absolute inset-0" style={{ background: card.pattern }} />
+</div>
+
+{card.heroImage && (
+  <img
+    src={card.heroImage}
+    alt={card.title}
+    className="absolute inset-0 h-full w-full object-cover"
+  />
+)}
 
                   <div className="absolute inset-0 bg-slate-950/20" />
                 </div>
@@ -507,21 +514,18 @@ export default function Home() {
                 className={`group w-56 flex-shrink-0 overflow-hidden rounded-xl border transition ${darkMode ? 'border-white/10 hover:border-white/30' : 'border-slate-200 hover:border-slate-300'}`}
               >
                 <div className="relative h-40 overflow-hidden">
-                  <AssetImage
-                    folder={item.assetFolder}
-                    alt={item.title}
-                    className="absolute inset-0 h-full w-full object-cover"
-                    fallback={
-                      <div className="absolute inset-0" style={{ background: item.gradient }}>
-                        <div
-                          style={{
-                            background: 'radial-gradient(circle at 30% 40%, rgba(15,23,42,0.7), transparent), radial-gradient(circle at 70% 70%, rgba(255,255,255,0.05), transparent)',
-                          }}
-                          className="absolute inset-0"
-                        />
-                      </div>
-                    }
-                  />
+                 <div
+  className="absolute inset-0"
+  style={{ background: item.gradient }}
+>
+  <div
+    className="absolute inset-0"
+    style={{
+      background:
+        'radial-gradient(circle at 30% 40%, rgba(15,23,42,0.7), transparent), radial-gradient(circle at 70% 70%, rgba(255,255,255,0.05), transparent)',
+    }}
+  />
+</div>
 
                   <div className="absolute inset-0 bg-slate-950/20" />
                   <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-white/80">
