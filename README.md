@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Toybox
 
-## Getting Started
+Curated Intelligence for Experience Acceleration
+Toybox is an AI-powered repository designed to transform scattered design artifacts into reusable organizational intelligence.
+Most teams create enormous amounts of valuable work during projects — research findings, journey maps, service blueprints, personas, process flows, wireframes, prototypes, presentations, strategy documents, and final deliverables. Once a project ends, much of that knowledge becomes difficult to discover, reuse, or operationalize.
+Toybox exists to change that.
+Rather than functioning as a traditional asset repository, Toybox serves as a system of curated intelligence. It helps teams discover, understand, package, and reuse organizational knowledge to accelerate future work.
 
-First, run the development server:
+✅ LINK TO WORKING SITE: https://toybox-ne02i4kq6-ashokkumarravindrans-projects.vercel.app/
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Current MVP
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The current version of Toybox focuses on a single objective:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Transform project artifacts into AI-generated showcase experiences.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Users can upload:
 
-## Learn More
+- Images
+- PDFs
+- Supporting references
 
-To learn more about Next.js, take a look at the following resources:
+Toybox uses Claude to analyze the uploaded content and automatically generate a structured showcase experience that includes:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Problem statement
+- User personas
+- Experience challenges
+- Solution highlights
+- Outcomes and impact
+- Narrative storytelling
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Generated showcases are automatically added to the Discover experience, creating a growing repository of organizational knowledge.
 
-## Deploy on Vercel
+### What Works Today
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+✅ Upload images and PDFs
+✅ AI-powered showcase generation (Claude Sonnet 4.5)
+✅ Automated case study creation
+✅ Discover and browse generated showcases
+✅ Showcase preview and publishing workflow
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### What Is Not Yet Available
+
+❌ Manual case study authoring
+❌ Drag-and-drop page building
+❌ Design Shelf
+❌ Artifact extraction
+❌ Collaboration and commenting
+❌ Figma ingestion
+❌ PPT ingestion
+❌ Collection creation
+❌ AI-powered recommendations
+❌ Experience packaging
+
+## Key Use Cases
+✅ Sales Acceleration
+✅ Enable sales teams to quickly identify relevant project examples and showcase proven experience during client conversations.
+✅ Proposal Response Acceleration
+✅ Help proposal and response teams rapidly locate reusable content, supporting artifacts, and experience evidence.
+✅ Design Acceleration
+✅ rovide designers with access to reusable deliverables, patterns, frameworks, and project knowledge.
+✅ Discovery Acceleration
+✅ Reduce time spent recreating research artifacts by surfacing existing organizational knowledge.
+✅ Knowledge Preservation
+✅ Ensure valuable project work remains discoverable long after project completion.
