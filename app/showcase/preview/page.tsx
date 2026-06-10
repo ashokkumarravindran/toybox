@@ -97,6 +97,64 @@ function dataUrlToBase64(dataUrl: string) {
   return dataUrl.split(',')[1] || '';
 }
 
+function savePreviewToIndexedDB(id: string, previewPayload: PreviewPayload) {
+  return new Promise<void>((resolve, reject) => {
+    const request = indexedDB.open('toybox-db', 1);
+
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains('showcases')) {
+        db.createObjectStore('showcases', { keyPath: 'id' });
+      }
+    };
+
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction('showcases', 'readwrite');
+      const store = tx.objectStore('showcases');
+
+      store.put({
+        id,
+        previewPayload,
+        savedAt: new Date().toISOString(),
+      });
+
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    };
+
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function getPreviewFromIndexedDB(id: string) {
+  return new Promise<PreviewPayload | null>((resolve, reject) => {
+    const request = indexedDB.open('toybox-db', 1);
+
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains('showcases')) {
+        db.createObjectStore('showcases', { keyPath: 'id' });
+      }
+    };
+
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction('showcases', 'readonly');
+      const store = tx.objectStore('showcases');
+      const getRequest = store.get(id);
+
+      getRequest.onsuccess = () => {
+        resolve(getRequest.result?.previewPayload || null);
+      };
+
+      getRequest.onerror = () => reject(getRequest.error);
+    };
+
+    request.onerror = () => reject(request.error);
+  });
+}
+
 function safeFileName(name: string) {
   return name || `toybox-asset-${Date.now()}`;
 }
@@ -111,17 +169,33 @@ function ShowcasePreviewContent() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
-    const memoryPreview = (window as any).__toyboxPreviewShowcase;
+    const loadPreview = async () => {
+      const activePreviewId = localStorage.getItem('toyboxActivePreviewId');
 
-    if (memoryPreview) {
-      setPayload(memoryPreview);
-    } else {
-      const stored = localStorage.getItem('toyboxPreviewShowcase');
-      if (stored) setPayload(JSON.parse(stored));
-    }
+      if (activePreviewId) {
+        const indexedPreview = await getPreviewFromIndexedDB(activePreviewId);
 
-    setIsPublished(searchParams.get('mode') === 'published');
-  }, []);
+        if (indexedPreview) {
+          setPayload(indexedPreview);
+          setIsPublished(searchParams.get('mode') === 'published');
+          return;
+        }
+      }
+
+      const memoryPreview = (window as any).__toyboxPreviewShowcase;
+
+      if (memoryPreview) {
+        setPayload(memoryPreview);
+      } else {
+        const stored = localStorage.getItem('toyboxPreviewShowcase');
+        if (stored) setPayload(JSON.parse(stored));
+      }
+
+      setIsPublished(searchParams.get('mode') === 'published');
+    };
+
+    loadPreview();
+  }, [searchParams]);
 
   const showcase = payload?.showcase || {};
 
@@ -145,50 +219,64 @@ function ShowcasePreviewContent() {
     getAssetImage(imageAssets[1]) ||
     getAssetImage(imageAssets[0]);
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (!payload) return;
 
     setIsPublishing(true);
 
- const compressedPublishedAssets = (payload.uploadedAssets || []).map((asset) => ({
-  ...asset,
-  dataUrl: asset.previewUrl || asset.dataUrl,
-  src: asset.previewUrl || asset.src,
-  url: asset.previewUrl || asset.url,
-}));
+    try {
+      const previewId = `preview-${Date.now()}`;
 
-const publishedCard = {
-  id: Date.now(),
-  title: showcase.title || payload.metadata?.projectName || 'Generated Showcase',
-  subtitle: showcase.subtitle || showcase.heroStatement || 'AI-generated showcase',
-  domain: showcase.domain || payload.metadata?.domain || 'Design',
-  overview: showcase.overview || '',
-  heroImage,
-  publishedAt: new Date().toISOString(),
-  tags: showcase.suggestedTags || payload.metadata?.tags || [],
+      const previewPayload: PreviewPayload = {
+        showcase,
+        uploadedAssets: payload.uploadedAssets || [],
+        metadata: payload.metadata || {},
+        generatedAt: payload.generatedAt || new Date().toISOString(),
+      };
 
-  previewPayload: {
-    showcase,
-    uploadedAssets: compressedPublishedAssets,
-    metadata: payload.metadata || {},
-    generatedAt: payload.generatedAt || new Date().toISOString(),
-  },
-};
+      await savePreviewToIndexedDB(previewId, previewPayload);
 
-const existing = JSON.parse(localStorage.getItem('toyboxPublishedShowcases') || '[]');
+      const publishedCard = {
+        id: Date.now(),
+        previewId,
+        title: showcase.title || payload.metadata?.projectName || 'Generated Showcase',
+        subtitle: showcase.subtitle || showcase.heroStatement || 'AI-generated showcase',
+        domain: showcase.domain || payload.metadata?.domain || 'Design',
+        overview: showcase.overview || '',
+        heroImage,
+        publishedAt: new Date().toISOString(),
+        tags: showcase.suggestedTags || payload.metadata?.tags || [],
+      };
 
-const lightweightCard = {
-  ...publishedCard,
-  previewPayload: null,
-};
+      const existingRaw = localStorage.getItem('toyboxPublishedShowcases');
+      const existing = existingRaw ? JSON.parse(existingRaw) : [];
 
-localStorage.setItem(
-  'toyboxPublishedShowcases',
-  JSON.stringify([lightweightCard, ...existing])
-);
-    setIsPublished(true);
+      const safeExisting = existing.map((item: any) => ({
+        id: item.id,
+        previewId: item.previewId,
+        title: item.title,
+        subtitle: item.subtitle,
+        domain: item.domain,
+        overview: item.overview,
+        heroImage: item.heroImage,
+        publishedAt: item.publishedAt,
+        tags: item.tags || [],
+      }));
 
-    setTimeout(() => router.push('/'), 900);
+      localStorage.setItem(
+        'toyboxPublishedShowcases',
+        JSON.stringify([publishedCard, ...safeExisting])
+      );
+
+      localStorage.setItem('toyboxActivePreviewId', previewId);
+
+      setIsPublished(true);
+      setTimeout(() => router.push('/'), 900);
+    } catch (error) {
+      console.error('Publish failed', error);
+      alert('Publishing failed. Please try again.');
+      setIsPublishing(false);
+    }
   };
 
   const handleDownload = async () => {
@@ -236,6 +324,7 @@ localStorage.setItem(
 
     localStorage.removeItem('toyboxPreviewShowcase');
     localStorage.removeItem('toyboxPublishedShowcases');
+    localStorage.removeItem('toyboxActivePreviewId');
     sessionStorage.removeItem('toyboxPublishToastShown');
     (window as any).__toyboxPreviewShowcase = null;
 
@@ -648,24 +737,33 @@ localStorage.setItem(
                   ['“Loved the ecosystem mapping work.”', 'Marcus H., Service Strategy Lead'],
                   ['“Excellent governance-led experience strategy.”', 'Nina K., Enterprise UX Director'],
                 ].map(([quote, person]) => (
-                  <div key={quote} className="rounded-[2rem] border border-slate-200 bg-white p-6">
+                  <div
+                    key={quote}
+                    className="rounded-[2rem] border border-slate-200 bg-white p-6"
+                  >
                     <p className="text-lg leading-7 text-slate-800">{quote}</p>
                     <p className="mt-6 text-sm text-slate-500">
-                      <span className="font-semibold text-slate-900">{person.split(',')[0]}</span>,
-                      {person.split(',').slice(1).join(',')}
+                      <span className="font-semibold text-slate-900">
+                        {person.split(',')[0]}
+                      </span>
+                      ,{person.split(',').slice(1).join(',')}
                     </p>
                   </div>
                 ))}
               </div>
 
               <div className="mt-10 rounded-[2rem] border border-slate-200 bg-white p-6">
-                <p className="text-sm font-semibold text-slate-700">Share a reflection</p>
+                <p className="text-sm font-semibold text-slate-700">
+                  Share a reflection
+                </p>
+
                 <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_auto]">
                   <input
                     disabled
                     value="Strong systems-thinking approach."
                     className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500"
                   />
+
                   <button
                     disabled
                     className="rounded-[1rem] bg-slate-950 px-6 py-3 text-sm font-semibold text-white opacity-80"
