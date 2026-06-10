@@ -14,6 +14,7 @@ type RepositoryCard = {
   gradient: string;
   pattern: string;
   heroImage?: string | null;
+  previewPayload?: any;
   __generated?: boolean;
   isNew?: boolean;
 };
@@ -223,6 +224,7 @@ export default function Home() {
         creator: item.domain || 'Toybox AI',
         rating: 4.9,
         heroImage: item.heroImage || null,
+        previewPayload: item.previewPayload || null,
         gradient: 'linear-gradient(135deg, #06b6d4 0%, #8b5cf6 55%, #ec4899 100%)',
         pattern: 'radial-gradient(circle at 20% 40%, rgba(255,255,255,0.18), transparent), radial-gradient(circle at 80% 80%, rgba(15,23,42,0.35), transparent)',
         __generated: true,
@@ -440,59 +442,82 @@ export default function Home() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {allCards.map((card) => {
             const isGenerated = card.__generated === true;
-            const href = isGenerated ? '/showcase/preview?mode=published' : card.title === 'Index Composer' ? '/showcase/index-composer' : '/';
+           return (
+<div
+  key={card.id}
+  onClick={() => {
+    if (card.__generated) {
+      if (card.previewPayload) {
+        localStorage.setItem(
+          'toyboxPreviewShowcase',
+          JSON.stringify(card.previewPayload)
+        );
 
-            return (
-              <Link
-                key={card.id}
-                href={href}
-                className={`group overflow-hidden rounded-xl border transition hover:-translate-y-1 hover:shadow-2xl ${darkMode ? 'border-white/10 hover:border-white/30 hover:bg-slate-950/50' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}
-              >
-                <div className="relative h-48 overflow-hidden">
-                  {isGenerated && (
-                    <div className="absolute right-3 top-3 z-20 rounded-full bg-cyan-500 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white shadow-lg">
-                      New
-                    </div>
-                  )}
+        (window as any).__toyboxPreviewShowcase = card.previewPayload;
+      }
 
-                 <div className="absolute inset-0" style={{ background: card.gradient }}>
-  <div className="absolute inset-0" style={{ background: card.pattern }} />
+      window.location.href = '/showcase/preview?mode=published';
+      return;
+    }
+
+    if (card.title === 'Index Composer') {
+      window.location.href = '/showcase/index-composer';
+      return;
+    }
+  }}
+  className={`group cursor-pointer overflow-hidden rounded-xl border transition hover:-translate-y-1 hover:shadow-2xl ${
+    darkMode
+      ? 'border-white/10 hover:border-white/30 hover:bg-slate-950/50'
+      : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+  }`}
+>
+  <div className="relative h-48 overflow-hidden">
+    {isGenerated && (
+      <div className="absolute right-3 top-3 z-20 rounded-full bg-cyan-500 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white shadow-lg">
+        New
+      </div>
+    )}
+
+    <div className="absolute inset-0" style={{ background: card.gradient }}>
+      <div className="absolute inset-0" style={{ background: card.pattern }} />
+    </div>
+
+    {card.heroImage && (
+      <img
+        src={card.heroImage}
+        alt={card.title}
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+    )}
+
+    <div className="absolute inset-0 bg-slate-950/20" />
+  </div>
+
+  <div className={`p-5 ${darkMode ? 'border-t border-white/10 bg-slate-950/50' : 'border-t border-slate-200 bg-slate-50'}`}>
+    <h3 className="text-sm font-semibold">{card.title}</h3>
+    <p className={`mt-2 text-xs ${darkMode ? 'text-slate-500' : 'text-slate-600'}`}>{card.type}</p>
+
+    <div className="mt-4 flex items-center justify-between gap-3 text-xs">
+      <div className="flex items-center gap-2">
+        <div className="h-4 w-4 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600" />
+        <span className={darkMode ? 'text-slate-400' : 'text-slate-600'}>{card.creator}</span>
+      </div>
+
+      <div className={`flex items-center gap-1 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+        <span>★</span>
+        <span>{card.rating}</span>
+      </div>
+    </div>
+
+    <button className={`mt-4 w-full rounded-lg py-2 text-xs font-medium transition ${
+      darkMode ? 'border border-white/10 hover:bg-white/5' : 'border border-slate-300 hover:bg-slate-100'
+    }`}>
+      <Bookmark size={14} className="mr-2 inline" />
+      Save
+    </button>
+  </div>
 </div>
-
-{card.heroImage && (
-  <img
-    src={card.heroImage}
-    alt={card.title}
-    className="absolute inset-0 h-full w-full object-cover"
-  />
-)}
-
-                  <div className="absolute inset-0 bg-slate-950/20" />
-                </div>
-
-                <div className={`p-5 ${darkMode ? 'border-t border-white/10 bg-slate-950/50' : 'border-t border-slate-200 bg-slate-50'}`}>
-                  <h3 className="text-sm font-semibold">{card.title}</h3>
-                  <p className={`mt-2 text-xs ${darkMode ? 'text-slate-500' : 'text-slate-600'}`}>{card.type}</p>
-
-                  <div className="mt-4 flex items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600" />
-                      <span className={darkMode ? 'text-slate-400' : 'text-slate-600'}>{card.creator}</span>
-                    </div>
-
-                    <div className={`flex items-center gap-1 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                      <span>★</span>
-                      <span>{card.rating}</span>
-                    </div>
-                  </div>
-
-                  <button className={`mt-4 w-full rounded-lg py-2 text-xs font-medium transition ${darkMode ? 'border border-white/10 hover:bg-white/5' : 'border border-slate-300 hover:bg-slate-100'}`}>
-                    <Bookmark size={14} className="mr-2 inline" />
-                    Save
-                  </button>
-                </div>
-              </Link>
-            );
+  );
           })}
         </div>
 

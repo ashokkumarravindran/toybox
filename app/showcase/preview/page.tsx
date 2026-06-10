@@ -108,6 +108,7 @@ function ShowcasePreviewContent() {
   const [payload, setPayload] = useState<PreviewPayload | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     const memoryPreview = (window as any).__toyboxPreviewShowcase;
@@ -149,18 +150,42 @@ function ShowcasePreviewContent() {
 
     setIsPublishing(true);
 
-    const publishedCard = {
-      id: Date.now(),
-      title: showcase.title || payload.metadata?.projectName || 'Generated Showcase',
-      subtitle: showcase.subtitle || showcase.heroStatement || 'AI-generated showcase',
-      domain: showcase.domain || payload.metadata?.domain || 'Design',
-      overview: showcase.overview || '',
-      heroImage,
-      publishedAt: new Date().toISOString(),
-      tags: showcase.suggestedTags || payload.metadata?.tags || [],
-    };
+ const compressedPublishedAssets = (payload.uploadedAssets || []).map((asset) => ({
+  ...asset,
+  dataUrl: asset.previewUrl || asset.dataUrl,
+  src: asset.previewUrl || asset.src,
+  url: asset.previewUrl || asset.url,
+}));
 
-    localStorage.setItem('toyboxPublishedShowcases', JSON.stringify([publishedCard]));
+const publishedCard = {
+  id: Date.now(),
+  title: showcase.title || payload.metadata?.projectName || 'Generated Showcase',
+  subtitle: showcase.subtitle || showcase.heroStatement || 'AI-generated showcase',
+  domain: showcase.domain || payload.metadata?.domain || 'Design',
+  overview: showcase.overview || '',
+  heroImage,
+  publishedAt: new Date().toISOString(),
+  tags: showcase.suggestedTags || payload.metadata?.tags || [],
+
+  previewPayload: {
+    showcase,
+    uploadedAssets: compressedPublishedAssets,
+    metadata: payload.metadata || {},
+    generatedAt: payload.generatedAt || new Date().toISOString(),
+  },
+};
+
+const existing = JSON.parse(localStorage.getItem('toyboxPublishedShowcases') || '[]');
+
+const lightweightCard = {
+  ...publishedCard,
+  previewPayload: null,
+};
+
+localStorage.setItem(
+  'toyboxPublishedShowcases',
+  JSON.stringify([lightweightCard, ...existing])
+);
     setIsPublished(true);
 
     setTimeout(() => router.push('/'), 900);
@@ -239,6 +264,27 @@ function ShowcasePreviewContent() {
 
   return (
     <div className="min-h-screen bg-white text-slate-950">
+      {selectedImage && (
+        <div
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/90 p-8"
+          onClick={() => setSelectedImage(null)}
+        >
+          <button
+            className="absolute right-6 top-6 text-4xl text-white"
+            onClick={() => setSelectedImage(null)}
+          >
+            ×
+          </button>
+
+          <img
+            src={selectedImage}
+            alt="Expanded preview"
+            className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+
       {isPublishing && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/75 backdrop-blur-md">
           <div className="w-full max-w-md rounded-[2rem] bg-white p-8 text-center shadow-2xl">
@@ -364,7 +410,8 @@ function ShowcasePreviewContent() {
                 <img
                   src={heroImage}
                   alt="Hero artifact"
-                  className="h-[360px] w-full rounded-lg object-contain"
+                  onClick={() => setSelectedImage(heroImage)}
+                  className="h-[360px] w-full cursor-zoom-in rounded-lg object-contain transition hover:scale-[1.02]"
                 />
               </div>
             )}
@@ -393,7 +440,8 @@ function ShowcasePreviewContent() {
                   <img
                     src={challengeImage}
                     alt="Challenge artifact"
-                    className="h-[340px] w-full rounded-lg object-contain"
+                    onClick={() => setSelectedImage(challengeImage)}
+                    className="h-[340px] w-full cursor-zoom-in rounded-lg object-contain transition hover:scale-[1.02]"
                   />
                 </div>
               )}
@@ -447,7 +495,8 @@ function ShowcasePreviewContent() {
                         <img
                           src={personaImage}
                           alt={persona.name || 'Persona'}
-                          className="mb-5 h-56 w-full rounded-lg bg-gradient-to-br from-slate-100 via-white to-slate-200 object-contain p-3"
+                          onClick={() => setSelectedImage(personaImage)}
+                          className="mb-5 h-56 w-full cursor-zoom-in rounded-lg bg-gradient-to-br from-slate-100 via-white to-slate-200 object-contain p-3 transition hover:scale-[1.02]"
                         />
                       )}
 
@@ -502,7 +551,8 @@ function ShowcasePreviewContent() {
                         <img
                           src={img}
                           alt={item.heading || 'Solution artifact'}
-                          className="h-[320px] w-full rounded-lg bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 object-contain p-4"
+                          onClick={() => setSelectedImage(img)}
+                          className="h-[320px] w-full cursor-zoom-in rounded-lg bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 object-contain p-4 transition hover:scale-[1.02]"
                         />
                       )}
 
@@ -575,61 +625,63 @@ function ShowcasePreviewContent() {
             </div>
           </div>
         </section>
-{isPublished && (
-  <section className="bg-white py-16">
-    <div className="mx-auto max-w-7xl px-6 sm:px-8">
-      <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-600">
-        Community Reflections
-      </p>
 
-      <h2 className="mt-4 text-4xl font-semibold tracking-[-0.04em]">
-        A thoughtful space for collaborative observations.
-      </h2>
+        {isPublished && (
+          <section className="bg-white py-16">
+            <div className="mx-auto max-w-7xl px-6 sm:px-8">
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-600">
+                Community Reflections
+              </p>
 
-      <p className="mt-4 max-w-3xl text-lg leading-8 text-slate-600">
-        A space for teams, designers, strategists, and collaborators to share observations,
-        insights, and reflections around the transformation journey.
-      </p>
+              <h2 className="mt-4 text-4xl font-semibold tracking-[-0.04em]">
+                A thoughtful space for collaborative observations.
+              </h2>
 
-      <div className="mt-10 grid gap-6 md:grid-cols-3">
-        {[
-          ['“Strong systems-thinking approach.”', 'Amina R., Design Operations Partner'],
-          ['“Loved the ecosystem mapping work.”', 'Marcus H., Service Strategy Lead'],
-          ['“Excellent governance-led experience strategy.”', 'Nina K., Enterprise UX Director'],
-        ].map(([quote, person]) => (
-          <div key={quote} className="rounded-[2rem] border border-slate-200 bg-white p-6">
-            <p className="text-lg leading-7 text-slate-800">{quote}</p>
-            <p className="mt-6 text-sm text-slate-500">
-              <span className="font-semibold text-slate-900">{person.split(',')[0]}</span>,
-              {person.split(',').slice(1).join(',')}
-            </p>
-          </div>
-        ))}
-      </div>
+              <p className="mt-4 max-w-3xl text-lg leading-8 text-slate-600">
+                A space for teams, designers, strategists, and collaborators to share observations,
+                insights, and reflections around the transformation journey.
+              </p>
 
-      <div className="mt-10 rounded-[2rem] border border-slate-200 bg-white p-6">
-        <p className="text-sm font-semibold text-slate-700">Share a reflection</p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_auto]">
-          <input
-            disabled
-            value="Strong systems-thinking approach."
-            className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500"
-          />
-          <button
-            disabled
-            className="rounded-[1rem] bg-slate-950 px-6 py-3 text-sm font-semibold text-white opacity-80"
-          >
-            Add reflection
-          </button>
-        </div>
-      </div>
-    </div>
-  </section>
-)}
+              <div className="mt-10 grid gap-6 md:grid-cols-3">
+                {[
+                  ['“Strong systems-thinking approach.”', 'Amina R., Design Operations Partner'],
+                  ['“Loved the ecosystem mapping work.”', 'Marcus H., Service Strategy Lead'],
+                  ['“Excellent governance-led experience strategy.”', 'Nina K., Enterprise UX Director'],
+                ].map(([quote, person]) => (
+                  <div key={quote} className="rounded-[2rem] border border-slate-200 bg-white p-6">
+                    <p className="text-lg leading-7 text-slate-800">{quote}</p>
+                    <p className="mt-6 text-sm text-slate-500">
+                      <span className="font-semibold text-slate-900">{person.split(',')[0]}</span>,
+                      {person.split(',').slice(1).join(',')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-10 rounded-[2rem] border border-slate-200 bg-white p-6">
+                <p className="text-sm font-semibold text-slate-700">Share a reflection</p>
+                <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_auto]">
+                  <input
+                    disabled
+                    value="Strong systems-thinking approach."
+                    className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500"
+                  />
+                  <button
+                    disabled
+                    className="rounded-[1rem] bg-slate-950 px-6 py-3 text-sm font-semibold text-white opacity-80"
+                  >
+                    Add reflection
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );
 }
+
 export default function ShowcasePreviewPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-white" />}>
