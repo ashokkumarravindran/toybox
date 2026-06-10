@@ -37,7 +37,7 @@ export default function IndexComposerShowcase() {
   const [submitted, setSubmitted] = useState<Reflection[]>([]);
   const [challengeImage, setChallengeImage] = useState('/assets/curated/indexComposer/challenge.png');
 
-  const heroImage = '/assets/curated/indexComposer/preview.png';
+  const heroImage = '/assets/curated/indexComposer/Preview.png';
 
   return (
     <div className="bg-white text-slate-950">

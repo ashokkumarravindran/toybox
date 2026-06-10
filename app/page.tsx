@@ -47,7 +47,7 @@ const repositoryCards: RepositoryCard[] = [
   creator: 'Financial Services',
   rating: 4.7,
   assetFolder: 'curated/indexComposer',
-  heroImage: '/assets/curated/indexComposer/preview.png',
+  heroImage: '/assets/curated/indexComposer/Preview.png',
   gradient: 'linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%)',
   pattern: 'radial-gradient(circle at 30% 40%, rgba(15,23,42,0.8), transparent), radial-gradient(circle at 70% 70%, rgba(217,70,239,0.1), transparent)',
 },
@@ -146,7 +146,7 @@ const carouselSlides: CarouselSlide[] = [
   },
 ];
 
-const imageNames = ['thumbnail.png', 'cover.png', 'hero.png', 'preview.png'];
+const imageNames = ['thumbnail.png', 'cover.png', 'hero.png', 'Preview.png'];
 
 type AssetImageProps = {
   folder?: string;
