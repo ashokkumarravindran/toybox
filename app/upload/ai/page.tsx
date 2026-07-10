@@ -5,6 +5,31 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import ToyboxHeader from '@/app/components/ToyboxHeader';
 
+// ── IndexedDB helpers (mirrors preview/page.tsx) ──────────────────────────────
+function openPreviewDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('toybox-db', 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('showcases')) {
+        db.createObjectStore('showcases', { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function savePreviewToIDB(id: string, payload: unknown) {
+  const db = await openPreviewDB();
+  return new Promise<void>((resolve, reject) => {
+    const tx = db.transaction('showcases', 'readwrite');
+    tx.objectStore('showcases').put({ id, previewPayload: payload, savedAt: new Date().toISOString() });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 type AssetSource = 'image' | 'pdf' | 'other';
 
 type ShowcaseMetadata = {
@@ -172,7 +197,7 @@ export default function UploadAI() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [loadingFactIndex, setLoadingFactIndex] = useState(0);
   const [loadingProgress, setLoadingProgress] = useState(8);
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -424,19 +449,13 @@ const handleFiles = (incomingFiles: FileList | null) => {
         generatedAt: new Date().toISOString(),
       };
 
-      (window as any).__toyboxPreviewShowcase = previewPayload;
+      // Save full payload (with dataUrls) to IndexedDB so preview always loads the new generation
+      const previewId = `preview-${Date.now()}`;
+      await savePreviewToIDB(previewId, previewPayload);
+      localStorage.setItem('toyboxActivePreviewId', previewId);
 
-      localStorage.setItem(
-        'toyboxPreviewShowcase',
-        JSON.stringify({
-          ...previewPayload,
-          uploadedAssets: previewPayload.uploadedAssets.map((asset) => ({
-            name: asset.name,
-            type: asset.type,
-            category: asset.category,
-          })),
-        })
-      );
+      // Also keep window reference as fast-path for same-tab navigation
+      (window as any).__toyboxPreviewShowcase = previewPayload;
 
       router.push('/showcase/preview?mode=preview');
     } catch (error) {
@@ -449,16 +468,16 @@ const handleFiles = (incomingFiles: FileList | null) => {
 
   return (
     <div className="bg-white text-slate-950">
-      <ToyboxHeader darkMode={darkMode} onDarkModeChange={setDarkMode} />
+      <ToyboxHeader transparent mode="contextual" backHref="/upload" backLabel="Add showcase" pageTitle="Generate with AI" />
 
       {showPasswordModal && (
         <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-slate-950/75 px-6 backdrop-blur-md">
           <div className="w-full max-w-md rounded-[2rem] border border-white/10 bg-white p-8 text-center shadow-2xl">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-cyan-50 text-2xl">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-2xl">
               🔒
             </div>
 
-            <p className="mt-6 text-xs font-semibold uppercase tracking-[0.3em] text-cyan-600">
+            <p className="mt-6 text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: '#005AFF' }}>
               Showcase Studio
             </p>
 
@@ -481,7 +500,7 @@ const handleFiles = (incomingFiles: FileList | null) => {
                 if (e.key === 'Enter') handlePasswordSubmit();
               }}
               placeholder="Enter Key"
-              className="mt-6 w-full rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-cyan-400"
+              className="mt-6 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#005AFF] focus:ring-2 focus:ring-[#005AFF]/10"
             />
 
             {passwordError && (
@@ -504,7 +523,7 @@ const handleFiles = (incomingFiles: FileList | null) => {
               <button
                 type="button"
                 onClick={handlePasswordSubmit}
-                className="rounded-full bg-cyan-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-cyan-600"
+                className="rounded-lg px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90" style={{ background: '#005AFF' }}
               >
                 Let&apos;s go
               </button>
@@ -516,13 +535,13 @@ const handleFiles = (incomingFiles: FileList | null) => {
       {isProcessing && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/75 px-6 backdrop-blur-md">
           <div className="w-full max-w-lg rounded-[2rem] border border-white/10 bg-white p-8 text-center shadow-2xl">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-cyan-50">
-              <div className="h-10 w-10 animate-spin rounded-full border-4 border-cyan-200 border-t-cyan-500" />
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-slate-100">
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-[#005AFF]" />
             </div>
 
-            <h2 className="text-2xl font-semibold text-slate-900">Building your showcase</h2>
+            <h2 className="mt-6 text-2xl font-semibold text-slate-900">Building your showcase</h2>
 
-            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.3em] text-cyan-600">
+            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.3em]" style={{ color: '#005AFF' }}>
               Did you know?
             </p>
 
@@ -532,8 +551,8 @@ const handleFiles = (incomingFiles: FileList | null) => {
 
             <div className="mt-6 h-2 overflow-hidden rounded-full bg-slate-100">
               <div
-                className="h-full rounded-full bg-cyan-500 transition-all duration-700 ease-out"
-                style={{ width: `${loadingProgress}%` }}
+                className="h-full rounded-full transition-all duration-700 ease-out"
+                style={{ background: '#005AFF', width: `${loadingProgress}%` }}
               />
             </div>
 
@@ -545,15 +564,15 @@ const handleFiles = (incomingFiles: FileList | null) => {
       )}
 
       <main>
-        <div className="border-b border-white/10 bg-[#05060f]">
-          <div className="mx-auto max-w-7xl px-6 py-6 sm:px-8">
-            <Link href="/upload" className="text-sm font-medium text-cyan-300 hover:text-cyan-200">
-              Back to upload options ←
-            </Link>
-
-            <h1 className="mt-3 text-3xl font-semibold leading-[1.1] tracking-[-0.04em] text-white sm:text-4xl">
+        <div className="border-b border-white/8 bg-[#0A0A0F]">
+          <div className="mx-auto max-w-7xl px-6 py-16 sm:px-8">
+            <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500">Showcase Studio</p>
+            <h1 className="mt-3 text-5xl font-semibold leading-[1.06] tracking-[-0.04em] text-white sm:text-6xl">
               Generate with Toybox AI
             </h1>
+            <p className="mt-5 max-w-xl text-lg text-slate-400 leading-8">
+              Upload project images and PDFs. Claude reads the artifacts and builds a structured showcase draft.
+            </p>
           </div>
         </div>
 
@@ -562,7 +581,7 @@ const handleFiles = (incomingFiles: FileList | null) => {
             <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px]">
               <div className="space-y-8">
                 <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-xl shadow-slate-950/5">
-                  <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-600">
+                  <p className="text-xs font-bold uppercase tracking-[0.3em]" style={{ color: '#005AFF' }}>
                     Project context
                   </p>
 
@@ -574,7 +593,7 @@ const handleFiles = (incomingFiles: FileList | null) => {
                         value={metadata.projectName}
                         onChange={(e) => setMetadata({ ...metadata, projectName: e.target.value })}
                         placeholder="Example: Parent Portal Experience"
-                        className="mt-3 w-full rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-cyan-400"
+                        className="mt-3 w-full rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#005AFF]"
                       />
                     </label>
 
@@ -586,7 +605,7 @@ const handleFiles = (incomingFiles: FileList | null) => {
                           onChange={(e) =>
                             setMetadata({ ...metadata, engagementType: e.target.value })
                           }
-                          className="mt-3 w-full rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-cyan-400"
+                          className="mt-3 w-full rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-[#005AFF]"
                         >
                           <option value="">Choose an engagement</option>
                           {engagementOptions.map((option) => (
@@ -602,7 +621,7 @@ const handleFiles = (incomingFiles: FileList | null) => {
                         <select
                           value={metadata.domain}
                           onChange={(e) => setMetadata({ ...metadata, domain: e.target.value })}
-                          className="mt-3 w-full rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-cyan-400"
+                          className="mt-3 w-full rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-[#005AFF]"
                         >
                           <option value="">Choose a domain</option>
                           {domainOptions.map((option) => (
@@ -623,7 +642,7 @@ const handleFiles = (incomingFiles: FileList | null) => {
                         onChange={(e) => setProjectContext(e.target.value)}
                         placeholder="Example: This is a parent portal that supports families through enrollment, eligibility, payments, documents, and case communication."
                         rows={5}
-                        className="mt-3 w-full rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-900 outline-none placeholder:text-slate-400 focus:border-cyan-400"
+                        className="mt-3 w-full rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#005AFF]"
                       />
                     </label>
 
@@ -643,7 +662,7 @@ const handleFiles = (incomingFiles: FileList | null) => {
                               onClick={() => toggleTag(tag)}
                               className={`rounded-full border px-3 py-2 text-sm transition ${
                                 selected
-                                  ? 'border-cyan-400 bg-cyan-400/10 text-cyan-700'
+                                  ? 'border-[#005AFF] bg-[#EEF3FF] text-[#005AFF]'
                                   : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300'
                               }`}
                             >
@@ -657,7 +676,7 @@ const handleFiles = (incomingFiles: FileList | null) => {
                 </div>
 
                 <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-xl shadow-slate-950/5">
-                  <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-600">
+                  <p className="text-xs font-bold uppercase tracking-[0.3em]" style={{ color: '#005AFF' }}>
                     How to prepare your files
                   </p>
 
@@ -761,7 +780,7 @@ const handleFiles = (incomingFiles: FileList | null) => {
                         value={otherUrlInput}
                         onChange={(e) => setOtherUrlInput(e.target.value)}
                         placeholder="https://miro.com/... or reference URL"
-                        className="w-full rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-cyan-400"
+                        className="w-full rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-[#005AFF]"
                       />
 
                       <button
@@ -783,7 +802,7 @@ const handleFiles = (incomingFiles: FileList | null) => {
               </div>
 
               <aside className="h-fit rounded-[2rem] border border-slate-200 bg-white p-6 shadow-xl shadow-slate-950/5 lg:sticky lg:top-24">
-                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-600">
+                <p className="text-xs font-bold uppercase tracking-[0.3em]" style={{ color: '#005AFF' }}>
                   AI Magic
                 </p>
 
@@ -810,7 +829,7 @@ const handleFiles = (incomingFiles: FileList | null) => {
                 <button
                   onClick={handleGenerate}
                   disabled={isProcessing || files.length === 0}
-                  className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-cyan-500 px-8 py-4 text-sm font-semibold text-white transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="mt-6 inline-flex w-full items-center justify-center rounded-lg px-8 py-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40" style={{ background: '#005AFF' }}
                 >
                   {isProcessing ? 'Generating preview...' : 'Generate showcase preview'}
                 </button>

@@ -59,29 +59,24 @@ Your job:
    - annotation
    - supporting-visual
 3. Create a polished UX showcase story.
-4.For every generated section of the showcase,
-choose the most relevant uploaded artifact.
+4. For every generated section of the showcase, choose the most relevant uploaded artifact.
 
-Use the artifact's meaning and visual content,
-not simply its order in the upload list.
-
-Prefer:
-- persona artifacts for persona sections
-- journey maps for journey sections
-- ecosystem maps for ecosystem sections
-- dashboards and screens for feature highlights
-- workflows for process explanations
-- research artifacts for challenge and discovery sections
-- architecture diagrams for system and governance sections
-
-Never assign artifacts randomly.
-Every asset selection must be explainable.
+CRITICAL ASSET ASSIGNMENT RULES:
+- The uploaded assets list below shows EXACT file names. You MUST use these exact file names in assetName fields.
+- Classify each image by its visual content BEFORE assigning it to sections.
+- Persona sections MUST use images that visually look like persona cards/profile sheets (headshots, user bios, demographic info). NEVER assign a screenshot of a dashboard or app UI to a persona section.
+- Solution highlights MUST use images that look like dashboards, application screens, wireframes, or UI components. NEVER assign a persona card to a solution highlight section.
+- Journey map sections MUST use images that look like journey maps or swimlane diagrams.
+- Challenge/research sections should use research artifacts, affinity maps, or problem framing visuals.
+- Hero image should be the most visually striking image that represents the overall project.
+- If you cannot determine the visual type of an image from its file name alone, use contextual clues from the project description.
+- If a section type has no matching image, omit the assetName field or leave it as "".
 
 5. Return the exact uploaded file name in assetName.
 6. Do not invent asset names.
 7. Use only file names from the uploaded assets list.
 8. If no perfect match exists, choose the closest relevant artifact and explain the focus in visualFocus.
-9. Do not assign persona images to solution highlights unless the highlight is specifically about that persona.
+9. STRICT RULE: Do not assign persona images to solution highlights. Do not assign UI screenshots to persona sections.
 10. Prefer dashboard/application screenshots for solution highlights.
 11. Prefer persona cards/images for personas.
 
