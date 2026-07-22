@@ -142,6 +142,9 @@ Return this EXACT JSON structure:
       "narrative": ""
     }
   ],
+
+CRITICAL: For sectionType use ONLY these exact values (no other strings):
+journey-map | ecosystem-map | service-blueprint | storyboard | heuristic-checklist | solution-highlight | other
   "impact": "",
   "suggestedTags": []
 }

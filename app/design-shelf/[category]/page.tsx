@@ -4,21 +4,7 @@ import { use, useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { ExternalLink, Search, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import ToyboxHeader from '@/app/components/ToyboxHeader';
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-type ShelfArtifact = {
-  id: string;
-  category: string;
-  name: string;
-  role?: string;
-  description: string;
-  projectName: string;
-  domain: string;
-  publishedAt: string;
-  previewId: string;
-  assetName?: string;
-};
+import type { ShelfArtifact } from '@/lib/extractArtifacts';
 
 type Artifact = {
   id: string;
@@ -338,7 +324,7 @@ function LiveArtifactCard({ artifact, category }: { artifact: ShelfArtifact; cat
 
   return (
     <Link
-      href={`/showcase/preview?mode=published&previewId=${artifact.previewId}`}
+      href={`/design-shelf/${category}/${artifact.id}`}
       className="group block overflow-hidden rounded-2xl border border-[#005AFF]/20 bg-white transition hover:border-[#005AFF]/40 hover:-translate-y-0.5 hover:shadow-md"
     >
       {/* Thumbnail */}
@@ -371,7 +357,7 @@ function LiveArtifactCard({ artifact, category }: { artifact: ShelfArtifact; cat
         )}
         <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 text-xs text-slate-400">
           <span>Published {date}</span>
-          <span className="font-medium" style={{ color: '#005AFF' }}>View showcase →</span>
+          <span className="font-medium" style={{ color: '#005AFF' }}>View artifact →</span>
         </div>
       </div>
     </Link>

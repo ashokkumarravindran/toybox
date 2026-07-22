@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Bookmark, Download, Share2, Trash2, Pencil, Printer, ImagePlus, LayoutTemplate, ExternalLink, CheckCheck } from 'lucide-react';
 import JSZip from 'jszip';
+import { extractArtifacts, mergeIntoShelf } from '@/lib/extractArtifacts';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -102,22 +103,37 @@ function openDB(): Promise<IDBDatabase> {
   });
 }
 
-async function savePreviewToIDB(id: string, payload: PreviewPayload) {
+async function savePreviewToIDB(
+  id: string,
+  payload: PreviewPayload,
+  imageOverrides?: Record<string, string>
+) {
   const db = await openDB();
   return new Promise<void>((resolve, reject) => {
     const tx = db.transaction('showcases', 'readwrite');
-    tx.objectStore('showcases').put({ id, previewPayload: payload, savedAt: new Date().toISOString() });
+    tx.objectStore('showcases').put({
+      id,
+      previewPayload: payload,
+      imageOverrides: imageOverrides || {},
+      savedAt: new Date().toISOString(),
+    });
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
 }
 
-async function getPreviewFromIDB(id: string): Promise<PreviewPayload | null> {
+async function getPreviewFromIDB(
+  id: string
+): Promise<{ payload: PreviewPayload; imageOverrides: Record<string, string> } | null> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction('showcases', 'readonly');
     const req = tx.objectStore('showcases').get(id);
-    req.onsuccess = () => resolve(req.result?.previewPayload || null);
+    req.onsuccess = () => {
+      const r = req.result;
+      if (!r?.previewPayload) return resolve(null);
+      resolve({ payload: r.previewPayload, imageOverrides: r.imageOverrides || {} });
+    };
     req.onerror = () => reject(req.error);
   });
 }
@@ -132,9 +148,10 @@ type SwappableImageProps = {
   overrides: Record<string, string>;
   onSwap: (key: string, src: string) => void;
   onExpand: (src: string) => void;
+  isEditing?: boolean;
 };
 
-function SwappableImage({ src, alt, className, slotKey, overrides, onSwap, onExpand }: SwappableImageProps) {
+function SwappableImage({ src, alt, className, slotKey, overrides, onSwap, onExpand, isEditing }: SwappableImageProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const activeSrc = overrides[slotKey] || src;
 
@@ -154,15 +171,17 @@ function SwappableImage({ src, alt, className, slotKey, overrides, onSwap, onExp
         className={`${className} cursor-zoom-in`}
         onClick={() => onExpand(activeSrc)}
       />
-      {/* Swap overlay */}
-      <div className="pointer-events-none absolute inset-0 flex items-end justify-end gap-2 p-3 opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100">
-        <button
-          onClick={() => inputRef.current?.click()}
-          className="flex items-center gap-1.5 rounded-lg bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-900 shadow-lg backdrop-blur transition hover:bg-white"
-        >
-          <ImagePlus size={12} /> Replace
-        </button>
-      </div>
+      {/* Replace overlay — only visible in edit mode */}
+      {isEditing && (
+        <div className="pointer-events-none absolute inset-0 flex items-end justify-end gap-2 p-3 opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100">
+          <button
+            onClick={() => inputRef.current?.click()}
+            className="flex items-center gap-1.5 rounded-lg bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-900 shadow-lg backdrop-blur transition hover:bg-white"
+          >
+            <ImagePlus size={12} /> Replace
+          </button>
+        </div>
+      )}
       <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
     </div>
   );
@@ -230,15 +249,17 @@ function ShowcasePreviewContent() {
   const [isPublished, setIsPublished] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showcaseEdits, setShowcaseEdits] = useState<any>({});
+  const [commitStatus, setCommitStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
   useEffect(() => {
     const loadPreview = async () => {
       const activeId = localStorage.getItem('toyboxActivePreviewId');
       if (activeId) {
-        const idbPayload = await getPreviewFromIDB(activeId);
-        if (idbPayload) {
-          setPayload(idbPayload);
-          setShowcaseEdits(JSON.parse(JSON.stringify(idbPayload.showcase || {})));
+        const result = await getPreviewFromIDB(activeId);
+        if (result) {
+          setPayload(result.payload);
+          setShowcaseEdits(JSON.parse(JSON.stringify(result.payload.showcase || {})));
+          setImageOverrides(result.imageOverrides);
           setIsPublished(searchParams.get('mode') === 'published');
           return;
         }
@@ -259,6 +280,24 @@ function ShowcasePreviewContent() {
     };
     loadPreview();
   }, [searchParams]);
+
+  const handleDoneEditing = async () => {
+    if (!payload) { setIsEditing(false); return; }
+    const activeId = localStorage.getItem('toyboxActivePreviewId');
+    if (!activeId) { setIsEditing(false); return; }
+    setCommitStatus('saving');
+    try {
+      const mergedPayload: PreviewPayload = { ...payload, showcase: { ...payload.showcase, ...showcaseEdits } };
+      await savePreviewToIDB(activeId, mergedPayload, imageOverrides);
+      setPayload(mergedPayload);
+      setCommitStatus('saved');
+      setIsEditing(false);
+      setTimeout(() => setCommitStatus('idle'), 3000);
+    } catch {
+      setCommitStatus('idle');
+      setIsEditing(false);
+    }
+  };
 
   // sc is the source of truth for rendered text — edits are always live in showcaseEdits
   const showcase = showcaseEdits && Object.keys(showcaseEdits).length > 0 ? showcaseEdits : (payload?.showcase || {});
@@ -312,7 +351,7 @@ function ShowcasePreviewContent() {
       // Merge any inline edits into the payload before saving
       const publishPayload: PreviewPayload = { ...payload, showcase: { ...payload.showcase, ...showcaseEdits } };
       const previewId = `preview-${Date.now()}`;
-      await savePreviewToIDB(previewId, publishPayload);
+      await savePreviewToIDB(previewId, publishPayload, imageOverrides);
 
       const effectiveHero = imageOverrides['hero'] || heroImage;
 
@@ -338,71 +377,16 @@ function ShowcasePreviewContent() {
       localStorage.setItem('toyboxActivePreviewId', previewId);
 
       // ── Extract Design Shelf artifacts from this showcase ─────────────────
-      const shelfArtifacts = JSON.parse(localStorage.getItem('toyboxShelfArtifacts') || '[]');
-      const projectName = publishedCard.title;
-      const domain = publishedCard.domain;
-      const publishedAt = publishedCard.publishedAt;
-      const showcaseId = String(publishedCard.id);
-
-      // Extract personas
-      if (showcase.personas?.length > 0) {
-        showcase.personas.forEach((p: any, i: number) => {
-          if (!p.name) return;
-          shelfArtifacts.push({
-            id: `${showcaseId}-persona-${i}`,
-            category: 'personas',
-            name: p.name,
-            role: p.role || '',
-            description: [p.need, p.painPoint].filter(Boolean).join(' — ') || p.solutionSupport || '',
-            projectName,
-            domain,
-            publishedAt,
-            previewId,
-            // carry the matched asset name so the image can be shown
-            assetName: p.assetName || '',
-          });
-        });
-      }
-
-      // Extract journey map / visual sections that look like journey maps
-      const journeyTypes = ['journey', 'journey-map', 'journeymap', 'swimlane'];
-      const journeySections = (showcase.visualSections || []).filter((s: any) =>
-        journeyTypes.some((t) => (s.sectionType || '').toLowerCase().includes(t))
-      );
-      journeySections.forEach((s: any, i: number) => {
-        shelfArtifacts.push({
-          id: `${showcaseId}-journey-${i}`,
-          category: 'journey-maps',
-          name: s.sectionTitle || `Journey — ${projectName}`,
-          description: s.narrative || '',
-          projectName,
-          domain,
-          publishedAt,
-          previewId,
-          assetName: s.assetName || '',
-        });
+      const extracted = extractArtifacts({
+        showcase,
+        showcaseId: String(publishedCard.id),
+        previewId,
+        projectName: publishedCard.title,
+        domain: publishedCard.domain,
+        publishedAt: publishedCard.publishedAt,
       });
-
-      // Extract solution highlights that look like service blueprints
-      const blueprintTypes = ['blueprint', 'service', 'process', 'workflow'];
-      const blueprintSections = (showcase.visualSections || []).filter((s: any) =>
-        blueprintTypes.some((t) => (s.sectionType || '').toLowerCase().includes(t))
-      );
-      blueprintSections.forEach((s: any, i: number) => {
-        shelfArtifacts.push({
-          id: `${showcaseId}-blueprint-${i}`,
-          category: 'service-blueprints',
-          name: s.sectionTitle || `Blueprint — ${projectName}`,
-          description: s.narrative || '',
-          projectName,
-          domain,
-          publishedAt,
-          previewId,
-          assetName: s.assetName || '',
-        });
-      });
-
-      localStorage.setItem('toyboxShelfArtifacts', JSON.stringify(shelfArtifacts));
+      const existingShelf = JSON.parse(localStorage.getItem('toyboxShelfArtifacts') || '[]');
+      localStorage.setItem('toyboxShelfArtifacts', JSON.stringify(mergeIntoShelf(existingShelf, extracted)));
       // ─────────────────────────────────────────────────────────────────────
 
       setIsPublished(true);
@@ -538,6 +522,15 @@ function ShowcasePreviewContent() {
           <Link href="/" className="text-sm text-slate-500 hover:text-slate-950 transition">← Discover</Link>
 
           <div className="ml-auto flex items-center gap-2">
+            {/* Commit feedback */}
+            {commitStatus === 'saved' && (
+              <span className="flex items-center gap-1.5 text-xs font-medium text-green-600">
+                <CheckCheck size={13} /> Changes saved
+              </span>
+            )}
+            {commitStatus === 'saving' && (
+              <span className="text-xs text-slate-400">Saving…</span>
+            )}
             {/* Template picker — shows current template with label */}
             <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-1 py-1">
               <span className="pl-2 text-xs text-slate-400 hidden sm:block">Template:</span>
@@ -552,17 +545,23 @@ function ShowcasePreviewContent() {
 
             <div className="h-5 w-px bg-slate-200" />
 
-            <button
-              onClick={() => setIsEditing((prev) => !prev)}
-              className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition ${
-                isEditing
-                  ? 'border-[#005AFF] bg-[#EEF3FF] text-[#005AFF]'
-                  : 'border-slate-200 text-slate-700 hover:bg-slate-50'
-              }`}
-            >
-              {isEditing ? <CheckCheck size={13} /> : <Pencil size={13} />}
-              {isEditing ? 'Done editing' : 'Edit copy'}
-            </button>
+            {isEditing ? (
+              <button
+                onClick={handleDoneEditing}
+                disabled={commitStatus === 'saving'}
+                className="flex items-center gap-1.5 rounded-lg border border-[#005AFF] bg-[#005AFF] px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+              >
+                <CheckCheck size={13} />
+                {commitStatus === 'saving' ? 'Saving…' : 'Done editing'}
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                <Pencil size={13} /> Edit
+              </button>
+            )}
 
             <div className="h-5 w-px bg-slate-200" />
 
@@ -681,7 +680,7 @@ function ShowcasePreviewContent() {
                       <SwappableImage
                         key={i} src={getAssetImage(asset)} alt={asset.name} slotKey={`asset-${i}`}
                         className="h-52 w-full rounded-xl object-contain bg-slate-50"
-                        overrides={imageOverrides} onSwap={handleSwapImage} onExpand={setSelectedImage}
+                        overrides={imageOverrides} onSwap={handleSwapImage} onExpand={setSelectedImage} isEditing={isEditing}
                       />
                     ))}
                   </div>
@@ -719,7 +718,7 @@ function ShowcasePreviewContent() {
                 <SwappableImage
                   src={heroImage} alt="Hero artifact" slotKey="hero"
                   className="h-[340px] w-full object-contain transition hover:scale-[1.01]"
-                  overrides={imageOverrides} onSwap={handleSwapImage} onExpand={setSelectedImage}
+                  overrides={imageOverrides} onSwap={handleSwapImage} onExpand={setSelectedImage} isEditing={isEditing}
                 />
               </div>
             )}
@@ -740,7 +739,7 @@ function ShowcasePreviewContent() {
                   <SwappableImage
                     src={challengeImage} alt="Challenge artifact" slotKey="challenge"
                     className="h-[300px] w-full object-contain transition hover:scale-[1.01]"
-                    overrides={imageOverrides} onSwap={handleSwapImage} onExpand={setSelectedImage}
+                    overrides={imageOverrides} onSwap={handleSwapImage} onExpand={setSelectedImage} isEditing={isEditing}
                   />
                 </div>
               )}
@@ -775,7 +774,7 @@ function ShowcasePreviewContent() {
                         <SwappableImage
                           src={img} alt={persona.name || 'Persona'} slotKey={`persona-${i}`}
                           className="mb-4 h-48 w-full object-contain"
-                          overrides={imageOverrides} onSwap={handleSwapImage} onExpand={setSelectedImage}
+                          overrides={imageOverrides} onSwap={handleSwapImage} onExpand={setSelectedImage} isEditing={isEditing}
                         />
                       )}
                       <h3 className="text-xl font-semibold text-slate-950"><EF value={persona.name || ''} onChange={(v) => updatePersona(i, 'name', v)} isEditing={isEditing} /></h3>
@@ -809,7 +808,7 @@ function ShowcasePreviewContent() {
                         <SwappableImage
                           src={img} alt={item.heading || 'Solution artifact'} slotKey={`highlight-${i}`}
                           className={`h-[300px] w-full object-contain ${isCompact ? '' : 'brightness-90'}`}
-                          overrides={imageOverrides} onSwap={handleSwapImage} onExpand={setSelectedImage}
+                          overrides={imageOverrides} onSwap={handleSwapImage} onExpand={setSelectedImage} isEditing={isEditing}
                         />
                       )}
                       <div>
@@ -888,7 +887,7 @@ function ShowcasePreviewContent() {
                     <SwappableImage
                       key={i} src={src} alt={asset.name} slotKey={`gallery-${i}`}
                       className="h-48 w-full rounded-xl object-cover"
-                      overrides={imageOverrides} onSwap={handleSwapImage} onExpand={setSelectedImage}
+                      overrides={imageOverrides} onSwap={handleSwapImage} onExpand={setSelectedImage} isEditing={isEditing}
                     />
                   );
                 })}
