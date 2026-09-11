@@ -206,6 +206,16 @@ export default function UploadAI() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const [uploaderName, setUploaderName] = useState(() => localStorage.getItem('toyboxUploaderName') || '');
+  const [uploaderEmail, setUploaderEmail] = useState(() => localStorage.getItem('toyboxUploaderEmail') || '');
+  const [uploaderRole, setUploaderRole] = useState(() => localStorage.getItem('toyboxUploaderRole') || '');
+
+  useEffect(() => {
+    if (uploaderName) localStorage.setItem('toyboxUploaderName', uploaderName);
+    if (uploaderEmail) localStorage.setItem('toyboxUploaderEmail', uploaderEmail);
+    if (uploaderRole) localStorage.setItem('toyboxUploaderRole', uploaderRole);
+  }, [uploaderName, uploaderEmail, uploaderRole]);
+
   useEffect(() => {
     if (!isProcessing) return;
 
@@ -332,17 +342,30 @@ const handleFiles = (incomingFiles: FileList | null) => {
     }))
   );
 
+  // PDFs are sent as documents to Claude's API (up to 32 MB each) — no size check needed.
+  // Only images are subject to the payload size limit and get compressed.
+  const MAX_IMAGE_PAYLOAD_MB = 10;
+
   const compressionPasses = [
-    { maxWidth: 1400, quality: 0.78 },
-    { maxWidth: 1200, quality: 0.72 },
+    { maxWidth: 1400, quality: 0.82 },
+    { maxWidth: 1200, quality: 0.75 },
     { maxWidth: 1000, quality: 0.65 },
+    { maxWidth: 800,  quality: 0.55 },
+    { maxWidth: 640,  quality: 0.45 },
+    { maxWidth: 512,  quality: 0.38 },
+    { maxWidth: 400,  quality: 0.30 },
   ];
+
+  // Check if there are any images at all — if only PDFs, skip compression entirely
+  const hasImages = originalFiles.some((f) => f.category === 'image');
+  if (!hasImages) {
+    return { originalFiles, analysisFiles: originalFiles };
+  }
 
   for (const pass of compressionPasses) {
     const analysisFiles = await Promise.all(
       originalFiles.map(async (file) => {
         if (file.category !== 'image') return file;
-
         return {
           ...file,
           type: 'image/jpeg',
@@ -351,25 +374,18 @@ const handleFiles = (incomingFiles: FileList | null) => {
       })
     );
 
-    const apiPayload = {
-      projectName: metadata.projectName,
-      domain: metadata.domain,
-      engagementType: metadata.engagementType,
-      projectContext,
-      figmaLink,
-      otherUrls,
-      tags: metadata.tags,
-      images: analysisFiles.filter((file) => file.category === 'image'),
-      documents: analysisFiles.filter((file) => file.category === 'pdf'),
-    };
+    // Only measure the image portion — PDFs are handled separately by the API route
+    const imageSizeMb = analysisFiles
+      .filter((f) => f.category === 'image')
+      .reduce((sum, f) => sum + new Blob([f.dataUrl]).size / MB, 0);
 
-    if (getPayloadSizeMb(apiPayload) <= MAX_API_PAYLOAD_MB) {
+    if (imageSizeMb <= MAX_IMAGE_PAYLOAD_MB) {
       return { originalFiles, analysisFiles };
     }
   }
 
   throw new Error(
-    'The selected files are still too large after optimization. Try removing one or two files, or upload smaller images.'
+    'Your images are still too large after optimization. Try removing some images or uploading lower-resolution versions.'
   );
 };
 
@@ -424,13 +440,29 @@ const handleFiles = (incomingFiles: FileList | null) => {
       const result = await response.json();
 
       if (!result.ok) {
-        setErrorMessage('Showcase generation failed. Please try again.');
+        const detail = result.error
+          ? typeof result.error === 'string'
+            ? result.error
+            : JSON.stringify(result.error)
+          : 'Unknown error';
+        setErrorMessage(`Showcase generation failed: ${detail}`);
         setIsProcessing(false);
         return;
       }
 
+      // Inject uploader as POC if not already set by the AI
+      const pocName = uploaderName || 'Slalom Team';
+      const pocEmail = uploaderEmail || '';
+      const pocRole = uploaderRole || 'Slalom Practitioner';
+      const showcaseWithPoc = {
+        ...result.showcase,
+        pointsOfContact: result.showcase.pointsOfContact?.length
+          ? result.showcase.pointsOfContact
+          : [{ name: pocName, role: pocRole, email: pocEmail }],
+      };
+
       const previewPayload = {
-        showcase: result.showcase,
+        showcase: showcaseWithPoc,
         uploadedAssets: originalFiles.map((file) => ({
           name: file.name,
           type: file.type,
@@ -445,6 +477,9 @@ const handleFiles = (incomingFiles: FileList | null) => {
           figmaLink,
           otherUrls,
           tags: metadata.tags,
+          uploaderName: pocName,
+          uploaderEmail: pocEmail,
+          uploaderRole: pocRole,
         },
         generatedAt: new Date().toISOString(),
       };
@@ -468,7 +503,7 @@ const handleFiles = (incomingFiles: FileList | null) => {
 
   return (
     <div className="bg-white text-slate-950">
-      <ToyboxHeader transparent mode="contextual" backHref="/upload" backLabel="Add showcase" pageTitle="Generate with AI" />
+      <ToyboxHeader transparent mode="contextual" backHref="/" backLabel="Discover" pageTitle="Generate with AI" />
 
       {showPasswordModal && (
         <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-slate-950/75 px-6 backdrop-blur-md">
@@ -816,7 +851,36 @@ const handleFiles = (incomingFiles: FileList | null) => {
                   draft.
                 </p>
 
+                {/* Point of contact */}
                 <div className="mt-6 rounded-[1.25rem] bg-slate-50 p-4">
+                  <p className="text-sm font-semibold text-slate-700">Your info</p>
+                  <p className="mt-1 text-xs text-slate-500">Added as point of contact on the showcase.</p>
+                  <div className="mt-3 space-y-2">
+                    <input
+                      type="text"
+                      placeholder="Your name"
+                      value={uploaderName}
+                      onChange={(e) => setUploaderName(e.target.value)}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-[#005AFF]"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Your role (e.g. UX Lead)"
+                      value={uploaderRole}
+                      onChange={(e) => setUploaderRole(e.target.value)}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-[#005AFF]"
+                    />
+                    <input
+                      type="email"
+                      placeholder="Your email"
+                      value={uploaderEmail}
+                      onChange={(e) => setUploaderEmail(e.target.value)}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-[#005AFF]"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-[1.25rem] bg-slate-50 p-4">
                   <p className="text-sm font-semibold text-slate-700">Before you generate</p>
 
                   <ul className="mt-3 space-y-2 text-sm text-slate-600">

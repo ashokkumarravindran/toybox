@@ -226,7 +226,7 @@ export default function UploadManual() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
-      <ToyboxHeader transparent mode="contextual" backHref="/upload" backLabel="Add showcase" pageTitle="Create manually" />
+      <ToyboxHeader transparent mode="contextual" backHref="/" backLabel="Discover" pageTitle="Create manually" />
 
       {/* Toast */}
       {toast && (

@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { use, useEffect, useState } from 'react';
-import { ExternalLink, User } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ExternalLink, User, Trash2 } from 'lucide-react';
+import DeleteConfirmModal from '@/app/components/DeleteConfirmModal';
 import type { ShelfArtifact, ArtifactCategory } from '@/lib/extractArtifacts';
 
 // ── IDB ───────────────────────────────────────────────────────────────────────
@@ -217,35 +219,113 @@ function PersonaDetail({ artifact, payload }: { artifact: ShelfArtifact; payload
   const assets: any[] = payload?.uploadedAssets || [];
   const img = getAssetSrc(assets, artifact.assetName);
 
+  if (!persona) return null;
+
   return (
     <div className="space-y-5 flex-1 min-w-0">
-      {/* Image */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-        {img ? (
-          <img src={img} alt={artifact.name} className="h-80 w-full object-contain bg-slate-50" />
-        ) : (
-          <div className="flex h-80 w-full items-center justify-center bg-slate-50">
-            <User size={56} className="text-slate-200" />
+
+      {/* Header card — archetype, quote, background */}
+      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+        <div className="flex gap-6 p-6">
+          {img ? (
+            <img src={img} alt={artifact.name} className="h-24 w-24 shrink-0 rounded-xl object-cover bg-slate-50" />
+          ) : (
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+              <User size={36} className="text-slate-300" />
+            </div>
+          )}
+          <div>
+            {persona.archetype && (
+              <span className="inline-block rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest mb-2" style={{ background: '#005AFF12', color: '#005AFF' }}>
+                {persona.archetype}
+              </span>
+            )}
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Tech comfort</p>
+            <p className="mt-1 text-sm font-medium text-slate-700">{persona.techComfort || '—'}</p>
+          </div>
+        </div>
+        {persona.quote && (
+          <div className="border-t border-slate-100 px-6 py-4" style={{ background: '#f8faff' }}>
+            <p className="text-base italic leading-7 text-slate-700">"{persona.quote}"</p>
           </div>
         )}
       </div>
 
-      {/* Fields */}
-      {persona?.need && (
+      {/* Background */}
+      {persona.background && (
         <div className="rounded-2xl border border-slate-200 bg-white p-6">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: '#005AFF' }}>Need</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: '#005AFF' }}>Background</p>
+          <p className="mt-3 text-base leading-7 text-slate-700">{persona.background}</p>
+        </div>
+      )}
+
+      {/* Goals + Frustrations side-by-side */}
+      {(persona.goals?.length > 0 || persona.frustrations?.length > 0) && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {persona.goals?.length > 0 && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-6">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-600">Goals</p>
+              <ul className="mt-3 space-y-2">
+                {persona.goals.map((g: string, i: number) => (
+                  <li key={i} className="flex items-start gap-2 text-sm leading-6 text-slate-700">
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+                    {g}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {persona.frustrations?.length > 0 && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-6">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-rose-500">Frustrations</p>
+              <ul className="mt-3 space-y-2">
+                {persona.frustrations.map((f: string, i: number) => (
+                  <li key={i} className="flex items-start gap-2 text-sm leading-6 text-slate-700">
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Need */}
+      {persona.need && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-6">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: '#005AFF' }}>Core Need</p>
           <p className="mt-3 text-base leading-7 text-slate-700">{persona.need}</p>
         </div>
       )}
-      {persona?.painPoint && (
+
+      {/* Pain Point */}
+      {persona.painPoint && (
         <div className="rounded-2xl border border-slate-200 bg-white p-6">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: '#005AFF' }}>Pain Point</p>
           <p className="mt-3 text-base leading-7 text-slate-700">{persona.painPoint}</p>
         </div>
       )}
-      {persona?.solutionSupport && (
+
+      {/* Behaviours */}
+      {persona.behaviours?.length > 0 && (
         <div className="rounded-2xl border border-slate-200 bg-white p-6">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: '#005AFF' }}>Solution Support</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: '#005AFF' }}>Observable Behaviours</p>
+          <ul className="mt-3 space-y-2">
+            {persona.behaviours.map((b: string, i: number) => (
+              <li key={i} className="flex items-start gap-2 text-sm leading-6 text-slate-700">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: '#005AFF' }} />
+                {b}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Solution Support */}
+      {persona.solutionSupport && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-6">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: '#005AFF' }}>How We Help</p>
           <p className="mt-3 text-base leading-7 text-slate-700">{persona.solutionSupport}</p>
         </div>
       )}
@@ -291,14 +371,17 @@ export default function ArtifactDetailPage({
   params: Promise<{ category: string; id: string }>;
 }) {
   const { category, id } = use(params);
+  const router = useRouter();
   const [artifact, setArtifact] = useState<ShelfArtifact | null>(null);
   const [payload, setPayload] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     try {
       const all: ShelfArtifact[] = JSON.parse(localStorage.getItem('toyboxShelfArtifacts') || '[]');
-      const found = all.find((a) => a.id === id);
+      const decodedId = decodeURIComponent(id);
+      const found = all.find((a) => a.id === decodedId || a.id === id);
       if (!found) { setLoading(false); return; }
       setArtifact(found);
       getShowcasePayload(found.previewId)
@@ -310,6 +393,20 @@ export default function ArtifactDetailPage({
   }, [id]);
 
   const categoryLabel = CATEGORY_LABELS[category] || category;
+
+  const handleDelete = () => {
+    if (!artifact) return;
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = () => {
+    setShowDeleteModal(false);
+    try {
+      const all: ShelfArtifact[] = JSON.parse(localStorage.getItem('toyboxShelfArtifacts') || '[]');
+      localStorage.setItem('toyboxShelfArtifacts', JSON.stringify(all.filter((a) => a.id !== id)));
+    } catch { /* ignore */ }
+    router.push(`/design-shelf/${category}`);
+  };
 
   if (loading) {
     return (
@@ -339,21 +436,39 @@ export default function ArtifactDetailPage({
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {showDeleteModal && artifact && (
+        <DeleteConfirmModal
+          title={`Delete "${artifact.name}"?`}
+          description="This will permanently remove the artifact from your Design Shelf. This action cannot be undone."
+          confirmLabel="Delete artifact"
+          onConfirm={confirmDelete}
+          onCancel={() => setShowDeleteModal(false)}
+        />
+      )}
       <PageHeader category={category} categoryLabel={categoryLabel} artifactName={artifact.name} />
 
       <main className="mx-auto max-w-7xl px-6 py-12 sm:px-8">
 
         {/* Title row */}
-        <div className="mb-8">
-          <p className="text-xs font-bold uppercase tracking-[0.3em]" style={{ color: '#005AFF' }}>
-            {categoryLabel}
-          </p>
-          <h1 className="mt-2 text-4xl font-semibold tracking-[-0.03em] text-slate-950">
-            {artifact.name}
-          </h1>
-          {artifact.role && (
-            <p className="mt-1 text-lg text-slate-500">{artifact.role}</p>
-          )}
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.3em]" style={{ color: '#005AFF' }}>
+              {categoryLabel}
+            </p>
+            <h1 className="mt-2 text-4xl font-semibold tracking-[-0.03em] text-slate-950">
+              {artifact.name}
+            </h1>
+            {artifact.role && (
+              <p className="mt-1 text-lg text-slate-500">{artifact.role}</p>
+            )}
+          </div>
+          <button
+            onClick={handleDelete}
+            className="mt-2 grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-red-100 text-red-400 transition hover:bg-red-50"
+            title="Delete artifact"
+          >
+            <Trash2 size={15} />
+          </button>
         </div>
 
         {/* Content + sidebar */}
