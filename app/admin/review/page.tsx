@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import DeleteConfirmModal from '@/app/components/DeleteConfirmModal';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -243,8 +243,6 @@ function PersonaCard({ p, index }: { p: any; index: number }) {
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
-import { Suspense } from 'react';
-
 function ReviewPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
