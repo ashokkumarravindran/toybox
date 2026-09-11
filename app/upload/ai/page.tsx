@@ -206,9 +206,15 @@ export default function UploadAI() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [uploaderName, setUploaderName] = useState(() => localStorage.getItem('toyboxUploaderName') || '');
-  const [uploaderEmail, setUploaderEmail] = useState(() => localStorage.getItem('toyboxUploaderEmail') || '');
-  const [uploaderRole, setUploaderRole] = useState(() => localStorage.getItem('toyboxUploaderRole') || '');
+  const [uploaderName, setUploaderName] = useState('');
+  const [uploaderEmail, setUploaderEmail] = useState('');
+  const [uploaderRole, setUploaderRole] = useState('');
+
+  useEffect(() => {
+    setUploaderName(localStorage.getItem('toyboxUploaderName') || '');
+    setUploaderEmail(localStorage.getItem('toyboxUploaderEmail') || '');
+    setUploaderRole(localStorage.getItem('toyboxUploaderRole') || '');
+  }, []);
 
   useEffect(() => {
     if (uploaderName) localStorage.setItem('toyboxUploaderName', uploaderName);
