@@ -256,6 +256,11 @@ export default function PresentationPage() {
                 <h3>Proposals scramble for proof</h3>
                 <p>Teams reach out to colleagues, dig through old drives, or start from scratch for every pitch.</p>
               </div>
+              <div className="tb-pcard">
+                <div className="tb-pcard-icon"><svg viewBox="0 0 16 16" fill="none"><path d="M8 2v4M8 10v4M4 8H2M14 8h-2M5.5 5.5L4 4M12 12l-1.5-1.5M10.5 5.5L12 4M4 12l1.5-1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg></div>
+                <h3>Missed revenue potential</h3>
+                <p>Innovative solutions that could be white-labeled and taken to market sit idle — untapped opportunities to win new clients.</p>
+              </div>
             </div>
           </section>
 
