@@ -237,7 +237,7 @@ export default function PresentationPage() {
 
           {/* SLIDE 1 — Problem */}
           <section className="tb-slide active" id="tb-s1">
-            <div className="tb-eyebrow">The Problem</div>
+            <div className="tb-eyebrow">If a tree falls and no one hears it...</div>
             <h2 className="tb-h2" style={{ textAlign: 'center', maxWidth: 720 }}>We build world-class CX.<br/>Most of it is never seen again.</h2>
             <p className="tb-sub" style={{ textAlign: 'center', marginTop: 20 }}>CX teams move fast. Between projects, there is rarely time to write up what was built. Case studies live in local drives. Brilliant work gets buried in knowledge portals. When the next proposal lands, teams scramble to find it — or start over.</p>
             <div className="tb-problem-grid">
