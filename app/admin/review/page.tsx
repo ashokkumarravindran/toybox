@@ -243,7 +243,9 @@ function PersonaCard({ p, index }: { p: any; index: number }) {
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
-export default function ReviewPage() {
+import { Suspense } from 'react';
+
+function ReviewPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const viewPreviewId = searchParams.get('previewId');
@@ -727,5 +729,13 @@ export default function ReviewPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function ReviewPage() {
+  return (
+    <Suspense>
+      <ReviewPageInner />
+    </Suspense>
   );
 }
